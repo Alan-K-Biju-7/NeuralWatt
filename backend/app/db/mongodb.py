@@ -1,12 +1,14 @@
 from motor.motor_asyncio import AsyncIOMotorClient, AsyncIOMotorDatabase
+from typing import Optional
 from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
 
+
 class Database:
-    client: AsyncIOMotorClient = None
-    db: AsyncIOMotorDatabase = None
+    client: Optional[AsyncIOMotorClient] = None
+    db: Optional[AsyncIOMotorDatabase] = None
 
 
 db_instance = Database()
@@ -17,13 +19,12 @@ async def connect_db() -> None:
     db_instance.client = AsyncIOMotorClient(settings.mongodb_uri)
     db_instance.db = db_instance.client[settings.mongodb_db_name]
 
-    # Create indexes
     await db_instance.db.readings.create_index(
         [("household_id", 1), ("timestamp", -1)]
     )
     await db_instance.db.readings.create_index(
         [("timestamp", 1)],
-        expireAfterSeconds=60 * 60 * 24 * 90  # 90 day auto-purge
+        expireAfterSeconds=60 * 60 * 24 * 90
     )
     await db_instance.db.users.create_index(
         [("email", 1)], unique=True
@@ -31,7 +32,6 @@ async def connect_db() -> None:
     await db_instance.db.households.create_index(
         [("owner_id", 1)]
     )
-
     logger.info(f"Connected to MongoDB: {settings.mongodb_db_name}")
 
 
@@ -41,5 +41,5 @@ async def close_db() -> None:
         logger.info("MongoDB connection closed")
 
 
-def get_db() -> AsyncIOMotorDatabase:
+def get_db() -> Optional[AsyncIOMotorDatabase]:
     return db_instance.db
