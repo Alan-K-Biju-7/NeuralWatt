@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+env/
+ENV/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+coverage.xml
+dist/
+build/
+
+# Environment variables — never commit secrets
+.env
+.env.local
+.env.production
+.env.*.local
+
+# Node
+node_modules/
+frontend/dist/
+frontend/build/
+.cache/
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+*.suo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Docker
+docker-compose.override.yml
+
+# ML models
+*.pkl
+*.h5
+*.pt
+*.onnx
+ml/models/
