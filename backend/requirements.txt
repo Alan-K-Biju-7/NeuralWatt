@@ -8,6 +8,7 @@ pymongo==4.9.2
 
 # Settings & validation
 pydantic==2.10.3
+email-validator==2.2.0
 pydantic-settings==2.6.1
 python-dotenv==1.0.1
 
