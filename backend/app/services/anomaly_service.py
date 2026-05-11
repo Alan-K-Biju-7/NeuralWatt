@@ -6,12 +6,13 @@ from fastapi import HTTPException, status
 from app.models.anomaly import AnomalyDocument
 from app.schemas.anomaly import AnomalySeverity, AnomalyResponse, BaselineResponse
 from app.services.household_service import get_household_by_id
+import logging
 
+logger = logging.getLogger(__name__)
 
-# Z-score thresholds for severity classification
-Z_LOW    = 2.0   # > 2 std devs  → low
-Z_MEDIUM = 3.0   # > 3 std devs  → medium
-Z_HIGH   = 4.0   # > 4 std devs  → high
+Z_LOW    = 2.0
+Z_MEDIUM = 3.0
+Z_HIGH   = 4.0
 
 
 def _classify_severity(z_score: float) -> AnomalySeverity:
@@ -36,15 +37,9 @@ async def _compute_baseline(
     device_id: str,
     lookback_hours: int = 72,
 ) -> Tuple[float, float, int]:
-    """Returns (mean, std_dev, count) from recent readings."""
     since = datetime.now(timezone.utc) - timedelta(hours=lookback_hours)
     pipeline = [
-        {
-            "$match": {
-                "device_id": device_id,
-                "timestamp": {"$gte": since},
-            }
-        },
+        {"$match": {"device_id": device_id, "timestamp": {"$gte": since}}},
         {
             "$group": {
                 "_id": None,
@@ -58,11 +53,9 @@ async def _compute_baseline(
     results = await db.readings.aggregate(pipeline).to_list(length=1)
     if not results or results[0]["count"] < 3:
         return 0.0, 0.0, 0
-
     r = results[0]
     mean = r["avg"]
     count = r["count"]
-    # Population std dev from sum of squares
     variance = (r["sq_sum"] / count) - (mean ** 2)
     std_dev = math.sqrt(max(variance, 0))
     return mean, std_dev, count
@@ -75,15 +68,11 @@ async def detect_and_store(
     reading_id: str,
     watts: float,
 ) -> Optional[AnomalyDocument]:
-    """Run Z-score detection on a new reading. Store and return anomaly if found."""
     mean, std_dev, count = await _compute_baseline(db, device_id)
-
-    # Need at least 3 readings to establish baseline
     if count < 3 or std_dev == 0:
         return None
 
     z_score = (watts - mean) / std_dev
-
     if abs(z_score) < Z_LOW:
         return None
 
@@ -102,6 +91,17 @@ async def detect_and_store(
         message=message,
     )
     await db.anomalies.insert_one(anomaly.to_dict())
+
+    # Dispatch alerts — import here to avoid circular imports
+    try:
+        from app.services.alert_config_service import get_configs_for_device
+        from app.services.notification_service import dispatch_alerts
+        configs = await get_configs_for_device(db, device_id)
+        if configs:
+            await dispatch_alerts(anomaly, configs)
+    except Exception as e:
+        logger.error(f"Alert dispatch failed silently: {e}")
+
     return anomaly
 
 
@@ -110,9 +110,9 @@ async def get_anomalies(
     household_id: str,
     device_id: str,
     user_id: str,
-    from_ts: Optional[datetime] = None,
-    to_ts: Optional[datetime] = None,
-    severity: Optional[AnomalySeverity] = None,
+    from_ts=None,
+    to_ts=None,
+    severity=None,
     limit: int = 50,
 ) -> List[AnomalyDocument]:
     household = await get_household_by_id(db, household_id)

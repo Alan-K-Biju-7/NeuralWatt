@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
+from pathlib import Path
 
 
 class Settings(BaseSettings):
@@ -39,7 +40,20 @@ class Settings(BaseSettings):
                 return True
         return value
 
-    model_config = {"env_file": ".env", "case_sensitive": False}
+    model_config = {
+        "env_file": (
+            str(Path(__file__).resolve().parents[3] / ".env"),
+            ".env",
+        ),
+        "case_sensitive": False,
+    }
 
 
 settings = Settings()
+
+    # SMTP / Email
+    smtp_host:     str = "smtp.gmail.com"
+    smtp_port:     int = 587
+    smtp_user:     str = ""
+    smtp_password: str = ""
+    smtp_from:     str = "noreply@neuralwatt.app"
