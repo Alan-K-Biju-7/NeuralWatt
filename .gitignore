@@ -49,3 +49,4 @@ docker-compose.override.yml
 *.pt
 *.onnx
 ml/models/
+simulator/.env
