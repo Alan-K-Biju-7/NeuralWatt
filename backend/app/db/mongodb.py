@@ -3,7 +3,6 @@ from app.core.config import settings
 import logging
 
 logger = logging.getLogger(__name__)
-
 client: AsyncIOMotorClient = None
 
 
@@ -16,19 +15,12 @@ async def connect_db() -> None:
 
 
 async def _create_indexes(db: AsyncIOMotorDatabase) -> None:
-    # Users — unique email
     await db.users.create_index("email", unique=True)
-
-    # Households — unique per owner
     await db.households.create_index("owner_id", unique=True)
-
-    # Readings — compound index for fast device+time queries
-    await db.readings.create_index(
-        [("device_id", 1), ("timestamp", -1)]
-    )
-    await db.readings.create_index(
-        [("household_id", 1), ("timestamp", -1)]
-    )
+    await db.readings.create_index([("device_id", 1), ("timestamp", -1)])
+    await db.readings.create_index([("household_id", 1), ("timestamp", -1)])
+    await db.anomalies.create_index([("device_id", 1), ("detected_at", -1)])
+    await db.anomalies.create_index("severity")
     logger.info("MongoDB indexes created ✅")
 
 
