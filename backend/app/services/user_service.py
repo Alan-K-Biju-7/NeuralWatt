@@ -1,6 +1,7 @@
 from typing import Optional
 from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
+from pymongo.errors import DuplicateKeyError
 from app.models.user import UserDocument
 from app.schemas.user import UserRegisterRequest, UserResponse
 from app.core.security import hash_password
@@ -28,6 +29,12 @@ async def get_user_by_id(
 async def create_user(
     db: AsyncIOMotorDatabase, payload: UserRegisterRequest
 ) -> UserDocument:
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection is unavailable",
+        )
+
     existing = await get_user_by_email(db, payload.email)
     if existing:
         raise HTTPException(
@@ -40,7 +47,13 @@ async def create_user(
         hashed_password=hash_password(payload.password),
         full_name=payload.full_name,
     )
-    await db.users.insert_one(user.to_dict())
+    try:
+        await db.users.insert_one(user.to_dict())
+    except DuplicateKeyError:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="An account with this email already exists",
+        )
     return user
 
 

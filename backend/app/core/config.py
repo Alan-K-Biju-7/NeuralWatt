@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings
-from typing import Optional
+from pydantic import field_validator
 
 
 class Settings(BaseSettings):
@@ -27,6 +27,17 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [origin.strip() for origin in self.cors_origins.split(",")]
+
+    @field_validator("debug", mode="before")
+    @classmethod
+    def normalize_debug(cls, value: object) -> object:
+        if isinstance(value, str):
+            lowered = value.strip().lower()
+            if lowered in {"release", "prod", "production"}:
+                return False
+            if lowered in {"dev", "development"}:
+                return True
+        return value
 
     model_config = {"env_file": ".env", "case_sensitive": False}
 
