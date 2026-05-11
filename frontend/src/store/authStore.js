@@ -10,10 +10,7 @@ const useAuthStore = create((set) => ({
   login: async (email, password) => {
     set({ isLoading: true, error: null });
     try {
-      const form = new URLSearchParams();
-      form.append("username", email);
-      form.append("password", password);
-      const { data } = await authAPI.login(form);
+      const { data } = await authAPI.login({ email, password });
       localStorage.setItem("nw_token", data.access_token);
       set({ token: data.access_token, isLoading: false });
       return true;
@@ -26,7 +23,7 @@ const useAuthStore = create((set) => ({
   register: async (name, email, password) => {
     set({ isLoading: true, error: null });
     try {
-      await authAPI.register({ name, email, password });
+      await authAPI.register({ full_name: name, email, password });
       set({ isLoading: false });
       return true;
     } catch (err) {

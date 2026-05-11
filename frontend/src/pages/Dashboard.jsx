@@ -41,8 +41,9 @@ export default function Dashboard() {
     enabled:   !!householdId,
     queryFn:   async () => {
       const { data } = await householdAPI.getDevices(householdId);
-      if (data.devices?.length) setDeviceId(data.devices[0].id);
-      return data.devices || [];
+      const deviceList = Array.isArray(data) ? data : (data.devices || []);
+      if (deviceList.length) setDeviceId(deviceList[0].id);
+      return deviceList;
     },
   });
 
@@ -118,7 +119,7 @@ export default function Dashboard() {
               {user?.name?.[0]?.toUpperCase() || "U"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-white text-sm font-medium truncate">{user?.name}</p>
+              <p className="text-white text-sm font-medium truncate">{user?.full_name || user?.name}</p>
               <p className="text-slate-500 text-xs truncate">{user?.email}</p>
             </div>
           </div>

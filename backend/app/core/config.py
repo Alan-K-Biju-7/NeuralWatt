@@ -23,7 +23,14 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # CORS
-    cors_origins: str = "http://localhost:5173,http://localhost:3000"
+    cors_origins: str = "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://127.0.0.1:5173,http://127.0.0.1:3000,http://127.0.0.1:3001"
+
+    # SMTP / Email
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 587
+    smtp_user: str = ""
+    smtp_password: str = ""
+    smtp_from: str = "noreply@neuralwatt.app"
 
     @property
     def cors_origins_list(self) -> list[str]:
@@ -50,10 +57,3 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
-
-    # SMTP / Email
-    smtp_host:     str = "smtp.gmail.com"
-    smtp_port:     int = 587
-    smtp_user:     str = ""
-    smtp_password: str = ""
-    smtp_from:     str = "noreply@neuralwatt.app"

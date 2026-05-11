@@ -162,6 +162,12 @@ async def dispatch_alerts(
     for cfg in configs:
         threshold_rank = severity_rank.get(cfg.severity_threshold.value, 3)
         if anomaly_rank < threshold_rank:
+            logger.info(
+                "Alert skipped by threshold | device=%s | anomaly=%s | threshold=%s",
+                anomaly.device_id,
+                anomaly.severity.value,
+                cfg.severity_threshold.value,
+            )
             continue  # anomaly below this config's threshold — skip
 
         if cfg.email_enabled and cfg.email_address:

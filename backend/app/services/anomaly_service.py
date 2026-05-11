@@ -15,11 +15,16 @@ Z_MEDIUM = 3.0
 Z_HIGH   = 4.0
 
 
-def _classify_severity(z_score: float) -> AnomalySeverity:
+def _classify_severity(z_score: float, deviation_pct: float) -> AnomalySeverity:
     abs_z = abs(z_score)
-    if abs_z >= Z_HIGH:
+    abs_dev = abs(deviation_pct)
+
+    # Keep z-score as the primary signal, but promote severity when
+    # percent deviation is extremely high (z-score can be dampened by
+    # previously spiky baselines).
+    if abs_z >= Z_HIGH or abs_dev >= 300:
         return AnomalySeverity.HIGH
-    elif abs_z >= Z_MEDIUM:
+    elif abs_z >= Z_MEDIUM or abs_dev >= 150:
         return AnomalySeverity.MEDIUM
     return AnomalySeverity.LOW
 
@@ -76,8 +81,8 @@ async def detect_and_store(
     if abs(z_score) < Z_LOW:
         return None
 
-    severity = _classify_severity(z_score)
     deviation_pct = ((watts - mean) / mean) * 100
+    severity = _classify_severity(z_score, deviation_pct)
     message = _build_message(watts, mean, deviation_pct, severity)
 
     anomaly = AnomalyDocument(
