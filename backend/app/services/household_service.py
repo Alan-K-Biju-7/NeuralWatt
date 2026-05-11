@@ -1,5 +1,6 @@
 from typing import Optional
 from bson import ObjectId
+from bson.errors import InvalidId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from fastapi import HTTPException, status
 from app.models.household import HouseholdDocument, DeviceDocument
@@ -9,6 +10,15 @@ from app.schemas.household import (
     DeviceCreateRequest,
     DeviceResponse,
 )
+
+def _parse_household_object_id(household_id: str) -> ObjectId:
+    try:
+        return ObjectId(household_id)
+    except (InvalidId, TypeError):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid household_id format",
+        )
 
 
 async def get_household_by_owner(
@@ -23,7 +33,13 @@ async def get_household_by_owner(
 async def get_household_by_id(
     db: AsyncIOMotorDatabase, household_id: str
 ) -> Optional[HouseholdDocument]:
-    data = await db.households.find_one({"_id": ObjectId(household_id)})
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection is unavailable",
+        )
+    object_id = _parse_household_object_id(household_id)
+    data = await db.households.find_one({"_id": object_id})
     if data:
         return HouseholdDocument.from_dict(data)
     return None
@@ -34,6 +50,11 @@ async def create_household(
     payload: HouseholdCreateRequest,
     owner_id: str,
 ) -> HouseholdDocument:
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection is unavailable",
+        )
     existing = await get_household_by_owner(db, owner_id)
     if existing:
         raise HTTPException(
@@ -57,6 +78,12 @@ async def add_device(
     owner_id: str,
     payload: DeviceCreateRequest,
 ) -> DeviceDocument:
+    if db is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Database connection is unavailable",
+        )
+    object_id = _parse_household_object_id(household_id)
     household = await get_household_by_id(db, household_id)
     if not household:
         raise HTTPException(
@@ -75,7 +102,7 @@ async def add_device(
         location=payload.location,
     )
     await db.households.update_one(
-        {"_id": ObjectId(household_id)},
+        {"_id": object_id},
         {"$push": {"devices": device.to_dict()}},
     )
     return device
