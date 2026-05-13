@@ -46,7 +46,7 @@ export default function DailyChart({ householdId, deviceId, days = 30 }) {
   const maxKwh = Math.max(...chartData.map(d => d.kwh), 0.001);
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+    <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/10">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="text-white font-semibold flex items-center gap-2">
@@ -106,7 +106,7 @@ export default function DailyChart({ householdId, deviceId, days = 30 }) {
 
       {/* Summary row */}
       {data && (
-        <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-700">
+        <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-800">
           {[
             { label: "From",  value: data.from_date },
             { label: "Days",  value: data.days.length },
