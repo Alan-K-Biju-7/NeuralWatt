@@ -4,15 +4,15 @@ import { Zap, IndianRupee, AlertTriangle, TrendingUp, Activity } from "lucide-re
 
 function KPICard({ title, value, sub, icon: Icon, color, loading }) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+    <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/10 transition-colors hover:border-slate-700">
       <div className="flex items-start justify-between mb-4">
         <p className="text-slate-400 text-sm font-medium">{title}</p>
-        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${color}`}>
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${color}`}>
           <Icon className="w-4 h-4 text-white" />
         </div>
       </div>
       {loading ? (
-        <div className="h-8 w-24 bg-slate-700 rounded animate-pulse" />
+        <div className="h-8 w-24 bg-slate-800 rounded animate-pulse" />
       ) : (
         <p className="text-white text-2xl font-bold tracking-tight">{value}</p>
       )}
@@ -23,22 +23,27 @@ function KPICard({ title, value, sub, icon: Icon, color, loading }) {
 
 function SlabBreakdown({ slabs, fixed, duty, meter, total }) {
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5 col-span-full">
-      <h3 className="text-white font-semibold mb-4 flex items-center gap-2">
-        <IndianRupee className="w-4 h-4 text-teal-400" />
-        KSEB Bill Breakdown
-      </h3>
+    <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/10 col-span-full">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h3 className="text-white font-semibold flex items-center gap-2">
+          <IndianRupee className="w-4 h-4 text-teal-400" />
+          KSEB bill breakdown
+        </h3>
+        <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
+          LT-1 telescopic
+        </span>
+      </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-slate-400 border-b border-slate-700">
+            <tr className="text-slate-400 border-b border-slate-800">
               <th className="text-left pb-2 font-medium">Slab</th>
               <th className="text-right pb-2 font-medium">Units (kWh)</th>
               <th className="text-right pb-2 font-medium">Rate (₹/kWh)</th>
               <th className="text-right pb-2 font-medium">Amount (₹)</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-700/50">
+          <tbody className="divide-y divide-slate-800">
             {slabs?.map((s, i) => (
               <tr key={i} className="text-slate-300">
                 <td className="py-2">{s.slab_label}</td>
@@ -48,7 +53,7 @@ function SlabBreakdown({ slabs, fixed, duty, meter, total }) {
               </tr>
             ))}
           </tbody>
-          <tfoot className="border-t border-slate-600">
+          <tfoot className="border-t border-slate-700">
             <tr className="text-slate-400 text-xs">
               <td colSpan={3} className="pt-3">Fixed charge</td>
               <td className="pt-3 text-right tabular-nums">₹{fixed?.toFixed(2)}</td>
