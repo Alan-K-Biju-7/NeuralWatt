@@ -2,6 +2,7 @@ import time
 import random
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 import requests
 
@@ -23,6 +24,13 @@ _household = config.HOUSEHOLD_ID
 _device    = config.DEVICE_ID
 
 
+def _error_detail(response):
+    try:
+        return response.json().get("detail", response.text)
+    except ValueError:
+        return response.text
+
+
 def _register():
     r = SESSION.post(f"{config.BASE_URL}/auth/register",
         json={
@@ -36,7 +44,7 @@ def _register():
     if r.status_code in (400, 409) and "already" in r.text.lower():
         log.info("ℹ️  Simulator user already exists")
         return True
-    log.error("❌ Register failed: %s", r.text)
+    log.error("❌ Register failed: %s", _error_detail(r))
     return False
 
 
@@ -49,14 +57,17 @@ def _login():
         SESSION.headers["Authorization"] = f"Bearer {_token}"
         log.info("🔑 Logged in")
         return True
-    log.error("❌ Login failed: %s", r.text)
+    log.error("❌ Login failed: %s", _error_detail(r))
     return False
 
 
 def _write_env(key, value):
     try:
-        with open(".env", "r") as f:
-            lines = f.readlines()
+        env_path = Path(config.ENV_FILE)
+        if env_path.exists():
+            lines = env_path.read_text().splitlines(keepends=True)
+        else:
+            lines = []
         found = False
         for i, line in enumerate(lines):
             if line.startswith(f"{key}="):
@@ -65,15 +76,27 @@ def _write_env(key, value):
                 break
         if not found:
             lines.append(f"{key}={value}\n")
-        with open(".env", "w") as f:
-            f.writelines(lines)
+        env_path.write_text("".join(lines))
     except Exception as e:
         log.warning("Could not update .env: %s", e)
 
 
+def _load_existing_household():
+    global _household
+    r = SESSION.get(f"{config.BASE_URL}/households/me")
+    if r.status_code == 200:
+        _household = r.json()["id"]
+        _write_env("HOUSEHOLD_ID", _household)
+        log.info("🏠 Using existing household: %s", _household)
+        return True
+    return False
+
+
 def _ensure_household():
     global _household
-    if _household:
+    if _household and _load_existing_household():
+        return True
+    if _load_existing_household():
         return True
     r = SESSION.post(f"{config.BASE_URL}/households", json={
         "name":          "Simulated Kerala Home",
@@ -85,13 +108,37 @@ def _ensure_household():
         _write_env("HOUSEHOLD_ID", _household)
         log.info("🏠 Household created: %s", _household)
         return True
-    log.error("❌ Household failed: %s", r.text)
+    if r.status_code == 409 and _load_existing_household():
+        return True
+    log.error("❌ Household failed: %s", _error_detail(r))
+    return False
+
+
+def _load_existing_device():
+    global _device
+    if not _household:
+        return False
+    r = SESSION.get(f"{config.BASE_URL}/households/{_household}/devices")
+    if r.status_code != 200:
+        return False
+
+    devices = r.json()
+    if _device and any(device["id"] == _device for device in devices):
+        log.info("📟 Using configured device: %s", _device)
+        return True
+
+    for device in devices:
+        if device["name"] == config.DEVICE_NAME:
+            _device = device["id"]
+            _write_env("DEVICE_ID", _device)
+            log.info("📟 Using existing device: %s", _device)
+            return True
     return False
 
 
 def _ensure_device():
     global _device
-    if _device:
+    if _load_existing_device():
         return True
     r = SESSION.post(
         f"{config.BASE_URL}/households/{_household}/devices", json={
@@ -105,11 +152,15 @@ def _ensure_device():
         _write_env("DEVICE_ID", _device)
         log.info("📟 Device created: %s", _device)
         return True
-    log.error("❌ Device failed: %s", r.text)
+    if r.status_code == 409 and _load_existing_device():
+        return True
+    log.error("❌ Device failed: %s", _error_detail(r))
     return False
 
 
 def _send_reading():
+    global _household, _device
+
     hour  = datetime.now(timezone.utc).hour
     watts = get_watts(hour)
 
@@ -119,8 +170,10 @@ def _send_reading():
 
     payload = {
         "watts":     watts,
+        "voltage":   round(random.uniform(218.0, 242.0), 2),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+    payload["current"] = round(payload["watts"] / payload["voltage"], 3)
     r = SESSION.post(
         f"{config.BASE_URL}/households/{_household}/devices/{_device}/readings",
         json=payload,
@@ -130,8 +183,14 @@ def _send_reading():
     elif r.status_code == 401:
         log.warning("🔑 Token expired — re-logging in")
         _login()
+    elif r.status_code in (403, 404):
+        log.warning("📟 Stored household/device is stale or unauthorized — refreshing bootstrap")
+        _household = ""
+        _device = ""
+        if _ensure_household() and _ensure_device():
+            log.info("Bootstrap refreshed")
     else:
-        log.error("❌ Send failed (%s): %s", r.status_code, r.text)
+        log.error("❌ Send failed (%s): %s", r.status_code, _error_detail(r))
 
 
 def main():
