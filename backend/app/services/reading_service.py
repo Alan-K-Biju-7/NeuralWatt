@@ -10,6 +10,7 @@ from app.schemas.reading import (
     ReadingStatsResponse,
 )
 from app.services.household_service import get_household_by_id
+from app.api import ws
 
 
 async def verify_device_ownership(
@@ -54,6 +55,15 @@ async def ingest_reading(
         timestamp=payload.timestamp or datetime.now(timezone.utc),
     )
     await db.readings.insert_one(reading.to_dict())
+
+    # Broadcast to all connected WebSocket clients
+    await ws.manager.broadcast(household_id, {
+        "type":      "reading",
+        "watts":     reading.watts,
+        "timestamp": reading.timestamp.isoformat(),
+        "device_id": device_id,
+    })
+
     return reading
 
 
