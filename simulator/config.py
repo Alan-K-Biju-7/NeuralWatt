@@ -3,7 +3,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 ENV_FILE = Path(__file__).resolve().with_name(".env")
-load_dotenv(ENV_FILE)
+load_dotenv(ENV_FILE, override=True)
 
 # API
 BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1").rstrip("/")
