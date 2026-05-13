@@ -29,7 +29,7 @@ export default function AnomalyFeed({ householdId, deviceId, limit = 10 }) {
   const anomalies = data?.anomalies || [];
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+    <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/10">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="text-white font-semibold flex items-center gap-2">
@@ -51,7 +51,7 @@ export default function AnomalyFeed({ householdId, deviceId, limit = 10 }) {
       {isLoading ? (
         <div className="space-y-3">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="h-16 bg-slate-700 rounded-xl animate-pulse" />
+            <div key={i} className="h-16 bg-slate-800 rounded-lg animate-pulse" />
           ))}
         </div>
       ) : anomalies.length === 0 ? (
@@ -68,7 +68,7 @@ export default function AnomalyFeed({ householdId, deviceId, limit = 10 }) {
             return (
               <div
                 key={a.id}
-                className={`${s.bg} ${s.border} border rounded-xl p-4
+                className={`${s.bg} ${s.border} border rounded-lg p-4
                             flex items-start gap-3`}
               >
                 <div className={`${s.badge} w-8 h-8 rounded-lg flex items-center
