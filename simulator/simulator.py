@@ -32,6 +32,10 @@ def _error_detail(response):
 
 
 def _register():
+    if config.TOKEN:
+        log.info("🔑 Using configured API token")
+        return True
+
     r = SESSION.post(f"{config.BASE_URL}/auth/register",
         json={
             "email": config.EMAIL,
@@ -50,6 +54,11 @@ def _register():
 
 def _login():
     global _token
+    if config.TOKEN:
+        _token = config.TOKEN
+        SESSION.headers["Authorization"] = f"Bearer {_token}"
+        return True
+
     r = SESSION.post(f"{config.BASE_URL}/auth/login",
         json={"email": config.EMAIL, "password": config.PASSWORD})
     if r.status_code == 200:
@@ -85,7 +94,14 @@ def _load_existing_household():
     global _household
     r = SESSION.get(f"{config.BASE_URL}/households/me")
     if r.status_code == 200:
-        _household = r.json()["id"]
+        household_id = r.json()["id"]
+        if _household and _household != household_id:
+            log.warning(
+                "Configured household %s does not belong to this token; using %s",
+                _household,
+                household_id,
+            )
+        _household = household_id
         _write_env("HOUSEHOLD_ID", _household)
         log.info("🏠 Using existing household: %s", _household)
         return True

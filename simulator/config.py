@@ -11,6 +11,7 @@ if not BASE_URL.endswith("/api/v1"):
     BASE_URL = f"{BASE_URL}/api/v1"
 
 # Credentials
+TOKEN = os.getenv("SIM_TOKEN", "")
 EMAIL    = os.getenv("SIM_EMAIL",    "simulator@neuralwatt.app")
 PASSWORD = os.getenv("SIM_PASSWORD", "Sim@12345")
 FULL_NAME = os.getenv("SIM_FULL_NAME", "NeuralWatt Simulator")
