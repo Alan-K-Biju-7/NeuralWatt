@@ -1,7 +1,9 @@
 import os
+from pathlib import Path
 from dotenv import load_dotenv
 
-load_dotenv()
+ENV_FILE = Path(__file__).resolve().with_name(".env")
+load_dotenv(ENV_FILE)
 
 # API
 BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1").rstrip("/")
@@ -18,8 +20,8 @@ HOUSEHOLD_ID = os.getenv("HOUSEHOLD_ID", "")
 DEVICE_ID    = os.getenv("DEVICE_ID",    "")
 
 # Behaviour
-INTERVAL_SECONDS  = 30
-SPIKE_PROBABILITY = 0.05
+INTERVAL_SECONDS  = int(os.getenv("INTERVAL_SECONDS", "30"))
+SPIKE_PROBABILITY = float(os.getenv("SPIKE_PROBABILITY", "0.05"))
 SPIKE_MULTIPLIER  = (2.5, 4.0)
 
 # Device info
