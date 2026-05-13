@@ -47,7 +47,7 @@ export default function HourlyChart({ householdId, deviceId, days = 7 }) {
   });
 
   return (
-    <div className="bg-slate-800 border border-slate-700 rounded-2xl p-5">
+    <div className="rounded-lg border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-black/10">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h3 className="text-white font-semibold flex items-center gap-2">
@@ -117,13 +117,13 @@ export default function HourlyChart({ householdId, deviceId, days = 7 }) {
 
       {/* Peak + low summary */}
       {data?.hours?.length > 0 && (
-        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-700">
-          <div className="bg-slate-700/50 rounded-xl p-3 text-center">
+        <div className="grid grid-cols-2 gap-3 mt-4 pt-4 border-t border-slate-800">
+          <div className="bg-slate-950/40 rounded-lg border border-slate-800 p-3 text-center">
             <p className="text-orange-400 font-bold">{fmt24(data.peak_hour)}</p>
             <p className="text-slate-400 text-xs mt-0.5">Peak hour</p>
             <p className="text-slate-300 text-xs">{data.peak_hour_avg_watts?.toFixed(1)} W avg</p>
           </div>
-          <div className="bg-slate-700/50 rounded-xl p-3 text-center">
+          <div className="bg-slate-950/40 rounded-lg border border-slate-800 p-3 text-center">
             <p className="text-teal-400 font-bold">{data.hours.length} hrs</p>
             <p className="text-slate-400 text-xs mt-0.5">Active hours</p>
             <p className="text-slate-300 text-xs">last {days} days</p>
