@@ -6,6 +6,7 @@ import KPICards from "../components/KPICards";
 import DailyChart from "../components/DailyChart";
 import HourlyChart from "../components/HourlyChart";
 import AnomalyFeed from "../components/AnomalyFeed";
+import LiveWattCard from "../components/LiveWattCard";
 import {
   Zap, LayoutDashboard, BarChart2,
   Bell, IndianRupee, LogOut, ChevronRight, Menu, X
@@ -172,6 +173,7 @@ export default function Dashboard() {
             <>
               {activeTab === "overview" && (
                 <div className="space-y-6">
+                <LiveWattCard householdId={householdId} />
                   <KPICards householdId={householdId} deviceId={deviceId} />
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <DailyChart householdId={householdId} deviceId={deviceId} />
