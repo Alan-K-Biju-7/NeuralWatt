@@ -10,6 +10,8 @@ class DeviceDocument:
         name: str,
         device_type: DeviceType,
         rated_power_watts: float,
+        brand: Optional[str] = None,
+        model: Optional[str] = None,
         location: Optional[str] = None,
         is_active: bool = True,
         created_at: Optional[datetime] = None,
@@ -18,6 +20,8 @@ class DeviceDocument:
         self._id = _id or ObjectId()
         self.name = name
         self.device_type = device_type
+        self.brand = brand
+        self.model = model
         self.rated_power_watts = rated_power_watts
         self.location = location
         self.is_active = is_active
@@ -28,6 +32,8 @@ class DeviceDocument:
             "_id": self._id,
             "name": self.name,
             "device_type": self.device_type,
+            "brand": self.brand,
+            "model": self.model,
             "rated_power_watts": self.rated_power_watts,
             "location": self.location,
             "is_active": self.is_active,
@@ -40,6 +46,8 @@ class DeviceDocument:
             _id=data.get("_id"),
             name=data["name"],
             device_type=data["device_type"],
+            brand=data.get("brand"),
+            model=data.get("model"),
             rated_power_watts=data["rated_power_watts"],
             location=data.get("location"),
             is_active=data.get("is_active", True),

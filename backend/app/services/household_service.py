@@ -98,8 +98,11 @@ async def add_device(
     device = DeviceDocument(
         name=payload.name,
         device_type=payload.device_type,
+        brand=payload.brand,
+        model=payload.model,
         rated_power_watts=payload.rated_power_watts,
         location=payload.location,
+        is_active=payload.is_active,
     )
     await db.households.update_one(
         {"_id": object_id},
@@ -113,6 +116,8 @@ def format_device_response(device: DeviceDocument) -> DeviceResponse:
         id=str(device._id),
         name=device.name,
         device_type=device.device_type,
+        brand=device.brand,
+        model=device.model,
         rated_power_watts=device.rated_power_watts,
         location=device.location,
         is_active=device.is_active,

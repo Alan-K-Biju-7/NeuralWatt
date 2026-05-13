@@ -18,14 +18,19 @@ class DeviceType(str, Enum):
 class DeviceCreateRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=100)
     device_type: DeviceType
+    brand: Optional[str] = Field(None, max_length=100)
+    model: Optional[str] = Field(None, max_length=100)
     rated_power_watts: float = Field(..., gt=0, description="Rated power in watts")
     location: Optional[str] = Field(None, max_length=100)
+    is_active: bool = True
 
 
 class DeviceResponse(BaseModel):
     id: str
     name: str
     device_type: DeviceType
+    brand: Optional[str]
+    model: Optional[str]
     rated_power_watts: float
     location: Optional[str]
     is_active: bool
