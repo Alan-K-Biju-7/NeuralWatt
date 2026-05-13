@@ -28,25 +28,55 @@ export default function Dashboard() {
 
   useEffect(() => { fetchUser(); }, []);
 
-  const { data: household } = useQuery({
+  const {
+    data: household,
+    isLoading: householdLoading,
+    error: householdError,
+    refetch: refetchHousehold,
+  } = useQuery({
     queryKey: ["household"],
     queryFn:  async () => {
       const { data } = await householdAPI.getMine();
-      setHouseholdId(data.id);
       return data;
     },
+    refetchOnWindowFocus: true,
   });
 
-  const { data: devices } = useQuery({
+  useEffect(() => {
+    if (household?.id) setHouseholdId(household.id);
+  }, [household?.id]);
+
+  const {
+    data: devices = [],
+    isLoading: devicesLoading,
+    error: devicesError,
+    refetch: refetchDevices,
+  } = useQuery({
     queryKey:  ["devices", householdId],
     enabled:   !!householdId,
     queryFn:   async () => {
       const { data } = await householdAPI.getDevices(householdId);
-      const deviceList = Array.isArray(data) ? data : (data.devices || []);
-      if (deviceList.length) setDeviceId(deviceList[0].id);
-      return deviceList;
+      return Array.isArray(data) ? data : (data.devices || []);
     },
+    initialData: () => household?.devices || [],
+    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    if (!devices.length) {
+      setDeviceId(null);
+      return;
+    }
+    const selectedDeviceExists = devices.some((device) => device.id === deviceId);
+    if (!selectedDeviceExists) setDeviceId(devices[0].id);
+  }, [devices, deviceId]);
+
+  const isLoadingDevices = householdLoading || devicesLoading;
+  const deviceLoadError = householdError || devicesError;
+  const retryDeviceLoad = () => {
+    refetchHousehold();
+    if (householdId) refetchDevices();
+  };
 
   return (
     <div className="min-h-screen bg-slate-900 flex">
@@ -165,9 +195,31 @@ export default function Dashboard() {
 
         {/* Page content */}
         <main className="flex-1 p-6 overflow-auto">
-          {!deviceId ? (
+          {isLoadingDevices ? (
             <div className="flex items-center justify-center h-64 text-slate-500">
-              No devices found. Add a device to get started.
+              Loading devices...
+            </div>
+          ) : deviceLoadError ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+              <p className="text-slate-400">
+                Could not load devices. Check that the backend is running and you are signed in with the same account used in Swagger.
+              </p>
+              <button
+                onClick={retryDeviceLoad}
+                className="rounded-lg bg-teal-500 px-4 py-2 text-sm font-medium text-white hover:bg-teal-400"
+              >
+                Retry
+              </button>
+            </div>
+          ) : !deviceId ? (
+            <div className="flex flex-col items-center justify-center h-64 gap-3 text-center">
+              <p className="text-slate-500">No devices found for this household.</p>
+              <button
+                onClick={() => refetchDevices()}
+                className="rounded-lg bg-slate-800 px-4 py-2 text-sm font-medium text-slate-200 hover:bg-slate-700"
+              >
+                Refresh devices
+              </button>
             </div>
           ) : (
             <>
