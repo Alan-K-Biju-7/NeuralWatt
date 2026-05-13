@@ -4,11 +4,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # API
-BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000")
+BASE_URL = os.getenv("API_BASE_URL", "http://localhost:8000/api/v1").rstrip("/")
+if not BASE_URL.endswith("/api/v1"):
+    BASE_URL = f"{BASE_URL}/api/v1"
 
 # Credentials
-EMAIL    = os.getenv("SIM_EMAIL",    "simulator@neuralwatt.local")
+EMAIL    = os.getenv("SIM_EMAIL",    "simulator@neuralwatt.app")
 PASSWORD = os.getenv("SIM_PASSWORD", "Sim@12345")
+FULL_NAME = os.getenv("SIM_FULL_NAME", "NeuralWatt Simulator")
 
 # Auto-filled on first run
 HOUSEHOLD_ID = os.getenv("HOUSEHOLD_ID", "")
@@ -21,5 +24,6 @@ SPIKE_MULTIPLIER  = (2.5, 4.0)
 
 # Device info
 DEVICE_NAME = "Kerala Home Simulator"
-DEVICE_TYPE = "smart_meter"
+DEVICE_TYPE = "other"
+RATED_POWER_WATTS = 5000
 LOCATION    = "Main Panel"

@@ -25,11 +25,15 @@ _device    = config.DEVICE_ID
 
 def _register():
     r = SESSION.post(f"{config.BASE_URL}/auth/register",
-        json={"email": config.EMAIL, "password": config.PASSWORD})
+        json={
+            "email": config.EMAIL,
+            "password": config.PASSWORD,
+            "full_name": config.FULL_NAME,
+        })
     if r.status_code in (200, 201):
         log.info("✅ Simulator user registered")
         return True
-    if r.status_code == 400 and "already" in r.text.lower():
+    if r.status_code in (400, 409) and "already" in r.text.lower():
         log.info("ℹ️  Simulator user already exists")
         return True
     log.error("❌ Register failed: %s", r.text)
@@ -72,12 +76,12 @@ def _ensure_household():
     if _household:
         return True
     r = SESSION.post(f"{config.BASE_URL}/households", json={
-        "name":     "Simulated Kerala Home",
-        "location": "Thiruvananthapuram, Kerala",
-        "members":  4,
+        "name":          "Simulated Kerala Home",
+        "address":       "Thiruvananthapuram, Kerala",
+        "num_occupants": 4,
     })
     if r.status_code in (200, 201):
-        _household = r.json()["_id"]
+        _household = r.json()["id"]
         _write_env("HOUSEHOLD_ID", _household)
         log.info("🏠 Household created: %s", _household)
         return True
@@ -91,12 +95,13 @@ def _ensure_device():
         return True
     r = SESSION.post(
         f"{config.BASE_URL}/households/{_household}/devices", json={
-        "name":     config.DEVICE_NAME,
-        "type":     config.DEVICE_TYPE,
-        "location": config.LOCATION,
+        "name":              config.DEVICE_NAME,
+        "device_type":       config.DEVICE_TYPE,
+        "rated_power_watts": config.RATED_POWER_WATTS,
+        "location":          config.LOCATION,
     })
     if r.status_code in (200, 201):
-        _device = r.json()["_id"]
+        _device = r.json()["id"]
         _write_env("DEVICE_ID", _device)
         log.info("📟 Device created: %s", _device)
         return True
@@ -115,7 +120,6 @@ def _send_reading():
     payload = {
         "watts":     watts,
         "timestamp": datetime.now(timezone.utc).isoformat(),
-        "source":    "simulator",
     }
     r = SESSION.post(
         f"{config.BASE_URL}/households/{_household}/devices/{_device}/readings",
