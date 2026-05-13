@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from app.core.config import settings
 from app.db.mongodb import connect_db, close_db
 from app.api.v1.router import api_router
+from app.api import ws
 import logging
 
 logging.basicConfig(
@@ -43,6 +44,7 @@ app.add_middleware(
 )
 
 app.include_router(api_router)
+app.include_router(ws.router)
 
 
 @app.get("/health", tags=["System"])
