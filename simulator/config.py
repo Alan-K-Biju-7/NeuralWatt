@@ -19,6 +19,7 @@ FULL_NAME = os.getenv("SIM_FULL_NAME", "NeuralWatt Simulator")
 # Auto-filled on first run
 HOUSEHOLD_ID = os.getenv("HOUSEHOLD_ID", "")
 DEVICE_ID    = os.getenv("DEVICE_ID",    "")
+DEVICE_KEY   = os.getenv("DEVICE_KEY",   "")
 
 # Behaviour
 INTERVAL_SECONDS  = int(os.getenv("INTERVAL_SECONDS", "30"))
