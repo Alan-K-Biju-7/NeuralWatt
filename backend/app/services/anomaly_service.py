@@ -48,10 +48,17 @@ async def _compute_baseline(
         {
             "$group": {
                 "_id": None,
-                "avg": {"$avg": "$watts"},
+                "avg": {"$avg": {"$ifNull": ["$power_w", "$watts"]}},
                 "count": {"$sum": 1},
-                "sq_sum": {"$sum": {"$multiply": ["$watts", "$watts"]}},
-                "sum": {"$sum": "$watts"},
+                "sq_sum": {
+                    "$sum": {
+                        "$multiply": [
+                            {"$ifNull": ["$power_w", "$watts"]},
+                            {"$ifNull": ["$power_w", "$watts"]},
+                        ]
+                    }
+                },
+                "sum": {"$sum": {"$ifNull": ["$power_w", "$watts"]}},
             }
         },
     ]
