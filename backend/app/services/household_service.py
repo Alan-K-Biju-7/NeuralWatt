@@ -26,7 +26,11 @@ async def get_household_by_owner(
 ) -> Optional[HouseholdDocument]:
     data = await db.households.find_one({"owner_id": owner_id})
     if data:
-        return HouseholdDocument.from_dict(data)
+        needs_key_backfill = any(not d.get("device_key") for d in data.get("devices", []))
+        household = HouseholdDocument.from_dict(data)
+        if needs_key_backfill:
+            await _persist_device_keys(db, household)
+        return household
     return None
 
 
@@ -41,8 +45,22 @@ async def get_household_by_id(
     object_id = _parse_household_object_id(household_id)
     data = await db.households.find_one({"_id": object_id})
     if data:
-        return HouseholdDocument.from_dict(data)
+        needs_key_backfill = any(not d.get("device_key") for d in data.get("devices", []))
+        household = HouseholdDocument.from_dict(data)
+        if needs_key_backfill:
+            await _persist_device_keys(db, household)
+        return household
     return None
+
+
+async def _persist_device_keys(
+    db: AsyncIOMotorDatabase,
+    household: HouseholdDocument,
+) -> None:
+    await db.households.update_one(
+        {"_id": household._id},
+        {"$set": {"devices": [device.to_dict() for device in household.devices]}},
+    )
 
 
 async def create_household(
@@ -120,6 +138,7 @@ def format_device_response(device: DeviceDocument) -> DeviceResponse:
         model=device.model,
         rated_power_watts=device.rated_power_watts,
         location=device.location,
+        device_key=device.device_key,
         is_active=device.is_active,
         created_at=device.created_at,
     )

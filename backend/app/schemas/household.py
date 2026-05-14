@@ -33,6 +33,10 @@ class DeviceResponse(BaseModel):
     model: Optional[str]
     rated_power_watts: float
     location: Optional[str]
+    device_key: Optional[str] = Field(
+        None,
+        description="Secret key used by ESP32/simulator with X-Device-Key",
+    )
     is_active: bool
     created_at: datetime
 

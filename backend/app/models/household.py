@@ -1,6 +1,7 @@
 from datetime import datetime, timezone
 from typing import Optional, List
 from bson import ObjectId
+import secrets
 from app.schemas.household import DeviceType
 
 
@@ -13,6 +14,7 @@ class DeviceDocument:
         brand: Optional[str] = None,
         model: Optional[str] = None,
         location: Optional[str] = None,
+        device_key: Optional[str] = None,
         is_active: bool = True,
         created_at: Optional[datetime] = None,
         _id: Optional[ObjectId] = None,
@@ -24,6 +26,7 @@ class DeviceDocument:
         self.model = model
         self.rated_power_watts = rated_power_watts
         self.location = location
+        self.device_key = device_key or secrets.token_urlsafe(32)
         self.is_active = is_active
         self.created_at = created_at or datetime.now(timezone.utc)
 
@@ -36,6 +39,7 @@ class DeviceDocument:
             "model": self.model,
             "rated_power_watts": self.rated_power_watts,
             "location": self.location,
+            "device_key": self.device_key,
             "is_active": self.is_active,
             "created_at": self.created_at,
         }
@@ -50,6 +54,7 @@ class DeviceDocument:
             model=data.get("model"),
             rated_power_watts=data["rated_power_watts"],
             location=data.get("location"),
+            device_key=data.get("device_key"),
             is_active=data.get("is_active", True),
             created_at=data.get("created_at"),
         )
