@@ -1,5 +1,5 @@
 from datetime import datetime, timezone, timedelta
-from typing import List, Optional, Tuple
+from typing import Optional
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from fastapi import HTTPException, status
 from app.services.household_service import get_household_by_id
@@ -10,66 +10,11 @@ from app.schemas.analytics import (
     HourlyUsageResponse,
     UsageReportResponse,
     CostEstimateResponse,
-    KSEBSlabBreakdown,
+    PeakHourPoint,
+    PeakHoursResponse,
+    SummaryResponse,
 )
-
-# ─────────────────────────────────────────────
-# KSEB Domestic LT-1 Telescopic Tariff (2025-27)
-# Source: KSEB Tariff Revision Circular 2025-2027
-# ─────────────────────────────────────────────
-KSEB_SLABS = [
-    {"limit": 50,   "rate": 3.25, "fixed": 40},
-    {"limit": 100,  "rate": 4.05, "fixed": 65},
-    {"limit": 150,  "rate": 5.10, "fixed": 85},
-    {"limit": 200,  "rate": 6.95, "fixed": 120},
-    {"limit": 250,  "rate": 8.20, "fixed": 120},
-    {"limit": 300,  "rate": 6.40, "fixed": 150},
-    {"limit": 350,  "rate": 7.25, "fixed": 175},
-    {"limit": 400,  "rate": 7.50, "fixed": 200},
-    {"limit": 500,  "rate": 7.90, "fixed": 230},
-    {"limit": float("inf"), "rate": 8.80, "fixed": 260},
-]
-ELECTRICITY_DUTY_PCT = 0.10   # 10% on energy charge
-METER_RENT           = 15.0   # ₹/month single-phase
-
-
-def _kseb_bill(total_units: float) -> Tuple[float, float, float, float, List[KSEBSlabBreakdown]]:
-    """
-    Calculate KSEB telescopic bill.
-    Returns (fixed_charge, energy_charge, electricity_duty, total_bill, slab_breakdown)
-    """
-    remaining  = total_units
-    prev_limit = 0
-    energy_charge = 0.0
-    slabs: List[KSEBSlabBreakdown] = []
-    fixed_charge = KSEB_SLABS[0]["fixed"]
-
-    for slab in KSEB_SLABS:
-        if remaining <= 0:
-            break
-        slab_size   = slab["limit"] - prev_limit
-        units_in    = min(remaining, slab_size)
-        cost        = round(units_in * slab["rate"], 2)
-        energy_charge += cost
-        fixed_charge   = slab["fixed"]   # telescopic — use highest slab's fixed charge
-
-        label = (
-            f"{prev_limit+1}–{slab['limit']} units"
-            if slab["limit"] != float("inf")
-            else f"Above {prev_limit} units"
-        )
-        slabs.append(KSEBSlabBreakdown(
-            slab_label=label,
-            units=round(units_in, 3),
-            rate_per_unit=slab["rate"],
-            slab_cost=cost,
-        ))
-        remaining  -= units_in
-        prev_limit  = slab["limit"]
-
-    electricity_duty = round(energy_charge * ELECTRICITY_DUTY_PCT, 2)
-    total_bill = round(fixed_charge + energy_charge + electricity_duty + METER_RENT, 2)
-    return fixed_charge, round(energy_charge, 2), electricity_duty, total_bill, slabs
+from app.services.tariff import estimate_bill, project_monthly_units
 
 
 async def _authorize(db, household_id: str, user_id: str):
@@ -97,9 +42,9 @@ async def get_daily_usage(
                 "_id": {
                     "$dateToString": {"format": "%Y-%m-%d", "date": "$timestamp"}
                 },
-                "total_wh":      {"$sum": {"$multiply": ["$watts", {"$divide": [1, 60]}]}},
-                "avg_watts":     {"$avg": "$watts"},
-                "peak_watts":    {"$max": "$watts"},
+                "total_kwh":     {"$sum": {"$ifNull": ["$energy_kwh", {"$divide": [{"$ifNull": ["$power_w", "$watts"]}, 60000]}]}},
+                "avg_watts":     {"$avg": {"$ifNull": ["$power_w", "$watts"]}},
+                "peak_watts":    {"$max": {"$ifNull": ["$power_w", "$watts"]}},
                 "reading_count": {"$sum": 1},
             }
         },
@@ -110,7 +55,7 @@ async def get_daily_usage(
     day_points = []
     total_kwh  = 0.0
     for r in results:
-        kwh = round(r["total_wh"] / 1000, 4)
+        kwh = round(r["total_kwh"], 4)
         total_kwh += kwh
         day_points.append(DailyUsagePoint(
             date=r["_id"],
@@ -146,8 +91,8 @@ async def get_hourly_usage(
         {
             "$group": {
                 "_id":           {"$hour": "$timestamp"},
-                "avg_watts":     {"$avg": "$watts"},
-                "peak_watts":    {"$max": "$watts"},
+                "avg_watts":     {"$avg": {"$ifNull": ["$power_w", "$watts"]}},
+                "peak_watts":    {"$max": {"$ifNull": ["$power_w", "$watts"]}},
                 "reading_count": {"$sum": 1},
             }
         },
@@ -224,9 +169,9 @@ async def get_cost_estimate(
 
     # Pro-rate to 30-day month for KSEB slab calculation
     actual_days   = len(daily.days) or 1
-    monthly_units = (daily.total_kwh / actual_days) * 30
+    monthly_units = project_monthly_units(daily.total_kwh, actual_days)
 
-    fixed, energy, duty, total, slabs = _kseb_bill(monthly_units)
+    fixed, energy, duty, total, slabs = estimate_bill(monthly_units)
 
     # Per-day cost approximation for breakdown
     cost_per_kwh = (energy / monthly_units) if monthly_units > 0 else 0
@@ -250,4 +195,77 @@ async def get_cost_estimate(
         total_bill=total,
         slab_breakdown=slabs,
         daily_breakdown=daily_breakdown,
+    )
+
+
+async def get_summary(
+    db: AsyncIOMotorDatabase,
+    household_id: str,
+    device_id: str,
+    user_id: str,
+) -> SummaryResponse:
+    await _authorize(db, household_id, user_id)
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    month_start = now - timedelta(days=30)
+
+    latest = await db.readings.find_one(
+        {"device_id": device_id},
+        sort=[("timestamp", -1)],
+    )
+    pipeline = [
+        {"$match": {"device_id": device_id, "timestamp": {"$gte": today_start}}},
+        {
+            "$group": {
+                "_id": None,
+                "today_kwh": {"$sum": {"$ifNull": ["$energy_kwh", {"$divide": [{"$ifNull": ["$power_w", "$watts"]}, 60000]}]}},
+                "avg_power_w": {"$avg": {"$ifNull": ["$power_w", "$watts"]}},
+                "peak_power_w": {"$max": {"$ifNull": ["$power_w", "$watts"]}},
+                "reading_count": {"$sum": 1},
+            }
+        },
+    ]
+    rows = await db.readings.aggregate(pipeline).to_list(length=1)
+    row = rows[0] if rows else {}
+    anomaly_count = await db.anomalies.count_documents(
+        {"device_id": device_id, "detected_at": {"$gte": month_start}}
+    )
+    today_kwh = round(row.get("today_kwh", 0.0), 4)
+    projected = project_monthly_units(today_kwh, 1)
+
+    return SummaryResponse(
+        device_id=device_id,
+        household_id=household_id,
+        live_power_w=round((latest or {}).get("power_w", (latest or {}).get("watts", 0.0)), 2),
+        today_kwh=today_kwh,
+        avg_power_w=round(row.get("avg_power_w", 0.0), 2),
+        peak_power_w=round(row.get("peak_power_w", 0.0), 2),
+        projected_monthly_kwh=round(projected, 4),
+        anomaly_count=anomaly_count,
+        reading_count=row.get("reading_count", 0),
+    )
+
+
+async def get_peak_hours(
+    db: AsyncIOMotorDatabase,
+    household_id: str,
+    device_id: str,
+    user_id: str,
+    days: int = 7,
+    limit: int = 3,
+) -> PeakHoursResponse:
+    hourly = await get_hourly_usage(db, household_id, device_id, user_id, days)
+    peaks = sorted(hourly.hours, key=lambda h: h.avg_watts, reverse=True)[:limit]
+    return PeakHoursResponse(
+        device_id=device_id,
+        window_days=days,
+        peaks=[
+            PeakHourPoint(
+                hour=h.hour,
+                avg_watts=h.avg_watts,
+                peak_watts=h.peak_watts,
+                reading_count=h.reading_count,
+            )
+            for h in peaks
+        ],
     )
