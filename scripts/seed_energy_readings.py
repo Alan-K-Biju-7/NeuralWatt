@@ -125,11 +125,13 @@ def build_payload(device: dict, timestamp: datetime, anomaly: bool) -> dict:
     energy_kwh = watts / 1000.0  # one hourly reading
 
     return {
-        "watts": round(watts, 2),
-        "voltage": round(voltage, 2),
-        "current": round(current_amps, 3),
-        "current_amps": round(current_amps, 3),
+        "power_w": round(watts, 2),
+        "voltage_v": round(voltage, 2),
+        "current_a": round(current_amps, 3),
         "energy_kwh": round(energy_kwh, 4),
+        "frequency_hz": round(random.uniform(49.8, 50.2), 2),
+        "power_factor": round(random.uniform(0.86, 0.99), 2),
+        "source": "backfill",
         "timestamp": utc_iso(timestamp),
     }
 
@@ -187,7 +189,7 @@ def main() -> None:
         marker = " ANOMALY" if anomaly else ""
         print(
             f"{status} {device['name']:<6} {payload['timestamp']} "
-            f"{payload['watts']:>8.2f}W{marker}"
+            f"{payload['power_w']:>8.2f}W{marker}"
         )
         if status >= 400 or status == 0:
             print(f"  response: {data}")
