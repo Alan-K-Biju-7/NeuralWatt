@@ -33,6 +33,31 @@ class HourlyUsageResponse(BaseModel):
     peak_hour_avg_watts: float
 
 
+class PeakHourPoint(BaseModel):
+    hour: int
+    avg_watts: float
+    peak_watts: float
+    reading_count: int
+
+
+class PeakHoursResponse(BaseModel):
+    device_id: str
+    window_days: int
+    peaks: List[PeakHourPoint]
+
+
+class SummaryResponse(BaseModel):
+    device_id: str
+    household_id: str
+    live_power_w: float
+    today_kwh: float
+    avg_power_w: float
+    peak_power_w: float
+    projected_monthly_kwh: float
+    anomaly_count: int
+    reading_count: int
+
+
 class UsageReportResponse(BaseModel):
     device_id: str
     household_id: str
