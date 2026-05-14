@@ -22,6 +22,7 @@ SESSION.headers.update({"Content-Type": "application/json"})
 _token     = ""
 _household = config.HOUSEHOLD_ID
 _device    = config.DEVICE_ID
+_device_key = config.DEVICE_KEY
 
 
 def _error_detail(response):
@@ -131,7 +132,7 @@ def _ensure_household():
 
 
 def _load_existing_device():
-    global _device
+    global _device, _device_key
     if not _household:
         return False
     r = SESSION.get(f"{config.BASE_URL}/households/{_household}/devices")
@@ -140,20 +141,27 @@ def _load_existing_device():
 
     devices = r.json()
     if _device and any(device["id"] == _device for device in devices):
+        selected = next(device for device in devices if device["id"] == _device)
+        _device_key = selected.get("device_key") or _device_key
+        if _device_key:
+            _write_env("DEVICE_KEY", _device_key)
         log.info("📟 Using configured device: %s", _device)
         return True
 
     for device in devices:
         if device["name"] == config.DEVICE_NAME:
             _device = device["id"]
+            _device_key = device.get("device_key") or _device_key
             _write_env("DEVICE_ID", _device)
+            if _device_key:
+                _write_env("DEVICE_KEY", _device_key)
             log.info("📟 Using existing device: %s", _device)
             return True
     return False
 
 
 def _ensure_device():
-    global _device
+    global _device, _device_key
     if _load_existing_device():
         return True
     r = SESSION.post(
@@ -165,7 +173,10 @@ def _ensure_device():
     })
     if r.status_code in (200, 201):
         _device = r.json()["id"]
+        _device_key = r.json().get("device_key", "")
         _write_env("DEVICE_ID", _device)
+        if _device_key:
+            _write_env("DEVICE_KEY", _device_key)
         log.info("📟 Device created: %s", _device)
         return True
     if r.status_code == 409 and _load_existing_device():
@@ -185,14 +196,23 @@ def _send_reading():
         log.warning("⚡ SPIKE injected → %.1f W", watts)
 
     payload = {
-        "watts":     watts,
-        "voltage":   round(random.uniform(218.0, 242.0), 2),
+        "power_w":   watts,
+        "voltage_v": round(random.uniform(218.0, 242.0), 2),
+        "frequency_hz": round(random.uniform(49.8, 50.2), 2),
+        "power_factor": round(random.uniform(0.86, 0.99), 2),
+        "source": "simulator",
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
-    payload["current"] = round(payload["watts"] / payload["voltage"], 3)
+    payload["current_a"] = round(payload["power_w"] / payload["voltage_v"], 3)
+    payload["energy_kwh"] = round(
+        (payload["power_w"] * config.INTERVAL_SECONDS) / 3_600_000,
+        6,
+    )
+    headers = {"X-Device-Key": _device_key} if _device_key else {}
     r = SESSION.post(
         f"{config.BASE_URL}/households/{_household}/devices/{_device}/readings",
         json=payload,
+        headers=headers,
     )
     if r.status_code in (200, 201):
         log.info("📤 Sent %.1f W  [hour=%02d]", watts, hour)
