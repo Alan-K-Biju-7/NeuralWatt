@@ -4,6 +4,7 @@ from typing import Optional
 from datetime import datetime
 from app.db.mongodb import get_db
 from app.core.security import get_current_user_id
+from app.core.dependencies import ReadingIngestPrincipal, verify_reading_ingest_auth
 from app.schemas.reading import (
     ReadingCreateRequest,
     ReadingResponse,
@@ -32,10 +33,17 @@ async def create_reading(
     household_id: str,
     device_id: str,
     payload: ReadingCreateRequest,
-    user_id: str = Depends(get_current_user_id),
+    principal: ReadingIngestPrincipal = Depends(verify_reading_ingest_auth),
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
-    reading = await ingest_reading(db, household_id, device_id, user_id, payload)
+    reading = await ingest_reading(
+        db,
+        household_id,
+        device_id,
+        principal.user_id,
+        payload,
+        skip_ownership_check=principal.auth_type == "device_key",
+    )
 
     # Run anomaly detection asynchronously — never block the response
     try:
