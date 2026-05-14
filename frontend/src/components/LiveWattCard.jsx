@@ -4,8 +4,8 @@ import {
   LineChart, Line, ResponsiveContainer, Tooltip, YAxis
 } from "recharts";
 
-export default function LiveWattCard({ householdId, deviceName }) {
-  const { watts, history, connected, secondsAgo, trend } = useLiveWatt(householdId);
+export default function LiveWattCard({ householdId, deviceId, deviceName }) {
+  const { watts, history, connected, secondsAgo, trend } = useLiveWatt(householdId, deviceId);
 
   const trendLabel = trend.charAt(0).toUpperCase() + trend.slice(1);
   const trendClass = trend === "rising"

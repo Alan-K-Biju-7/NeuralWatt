@@ -4,7 +4,7 @@ const WS_BASE = "ws://localhost:8000";
 const MAX_HISTORY = 20;
 const RECONNECT_DELAY = 3000;
 
-export function useLiveWatt(householdId) {
+export function useLiveWatt(householdId, deviceId) {
   const [watts, setWatts]         = useState(null);
   const [history, setHistory]     = useState([]);
   const [connected, setConnected] = useState(false);
@@ -27,6 +27,7 @@ export function useLiveWatt(householdId) {
       const data = JSON.parse(event.data);
       if (data.type === "ping") return;
       if (data.type === "reading") {
+        if (deviceId && data.device_id !== deviceId) return;
         setWatts(data.watts);
         setLastSeen(new Date());
         setHistory((prev) => {
@@ -45,7 +46,7 @@ export function useLiveWatt(householdId) {
     socket.onerror = () => {
       socket.close();
     };
-  }, [householdId]);
+  }, [householdId, deviceId]);
 
   useEffect(() => {
     connect();
@@ -54,6 +55,12 @@ export function useLiveWatt(householdId) {
       wsRef.current?.close();
     };
   }, [connect]);
+
+  useEffect(() => {
+    setWatts(null);
+    setHistory([]);
+    setLastSeen(null);
+  }, [deviceId]);
 
   // How many seconds since last reading
   const secondsAgo = lastSeen

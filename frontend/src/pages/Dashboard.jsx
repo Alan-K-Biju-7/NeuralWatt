@@ -251,7 +251,11 @@ export default function Dashboard() {
             <>
               {activeTab === "overview" && (
                 <div className="space-y-6">
-                  <LiveWattCard householdId={householdId} deviceName={selectedDevice?.name} />
+                  <LiveWattCard
+                    householdId={householdId}
+                    deviceId={deviceId}
+                    deviceName={selectedDevice?.name}
+                  />
                   <KPICards householdId={householdId} deviceId={deviceId} />
                   <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
                     <DailyChart householdId={householdId} deviceId={deviceId} />
