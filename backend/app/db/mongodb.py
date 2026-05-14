@@ -12,23 +12,29 @@ async def _ensure_index(
     *,
     unique: bool = False,
     name: str | None = None,
+    expire_after_seconds: int | None = None,
 ) -> None:
     indexes = await collection.index_information()
     for idx_name, idx_meta in indexes.items():
         if idx_meta.get("key") == keys:
             existing_unique = idx_meta.get("unique", False)
-            if existing_unique == unique:
+            existing_ttl = idx_meta.get("expireAfterSeconds")
+            if existing_unique == unique and existing_ttl == expire_after_seconds:
                 return
-            # Same key but uniqueness differs: replace to desired shape.
+            # Same key but options differ: replace to desired shape.
             logger.warning(
-                "Replacing index %s on %s to unique=%s",
+                "Replacing index %s on %s to unique=%s ttl=%s",
                 idx_name,
                 collection.name,
                 unique,
+                expire_after_seconds,
             )
             await collection.drop_index(idx_name)
             break
-    await collection.create_index(keys, unique=unique, name=name)
+    kwargs = {"unique": unique, "name": name}
+    if expire_after_seconds is not None:
+        kwargs["expireAfterSeconds"] = expire_after_seconds
+    await collection.create_index(keys, **kwargs)
 
 
 async def connect_db() -> None:
@@ -61,6 +67,12 @@ async def _create_indexes(db: AsyncIOMotorDatabase) -> None:
         db.readings,
         [("household_id", 1), ("timestamp", -1)],
         name="readings_household_time",
+    )
+    await _ensure_index(
+        db.readings,
+        [("timestamp", 1)],
+        name="readings_90_day_ttl",
+        expire_after_seconds=90 * 24 * 60 * 60,
     )
     await _ensure_index(
         db.anomalies,
