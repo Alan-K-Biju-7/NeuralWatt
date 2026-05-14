@@ -5,6 +5,7 @@ from app.core.config import settings
 from app.db.mongodb import connect_db, close_db
 from app.api.v1.router import api_router
 from app.api import ws
+from app.middleware.logging import RequestLoggingMiddleware
 import logging
 
 logging.basicConfig(
@@ -42,6 +43,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestLoggingMiddleware)
 
 app.include_router(api_router)
 app.include_router(ws.router)
