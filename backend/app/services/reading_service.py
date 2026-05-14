@@ -42,16 +42,28 @@ async def ingest_reading(
     db: AsyncIOMotorDatabase,
     household_id: str,
     device_id: str,
-    user_id: str,
+    user_id: Optional[str],
     payload: ReadingCreateRequest,
+    *,
+    skip_ownership_check: bool = False,
 ) -> ReadingDocument:
-    await verify_device_ownership(db, household_id, device_id, user_id)
+    if not skip_ownership_check:
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User auth is required",
+            )
+        await verify_device_ownership(db, household_id, device_id, user_id)
     reading = ReadingDocument(
         device_id=device_id,
         household_id=household_id,
-        watts=payload.watts,
-        voltage=payload.voltage,
-        current=payload.current,
+        power_w=payload.power_w,
+        voltage_v=payload.voltage_v,
+        current_a=payload.current_a,
+        energy_kwh=payload.energy_kwh,
+        frequency_hz=payload.frequency_hz,
+        power_factor=payload.power_factor,
+        source=payload.source,
         timestamp=payload.timestamp or datetime.now(timezone.utc),
     )
     await db.readings.insert_one(reading.to_dict())
@@ -59,7 +71,8 @@ async def ingest_reading(
     # Broadcast to all connected WebSocket clients
     await ws.manager.broadcast(household_id, {
         "type":      "reading",
-        "watts":     reading.watts,
+        "watts":     reading.power_w,
+        "power_w":   reading.power_w,
         "timestamp": reading.timestamp.isoformat(),
         "device_id": device_id,
     })
@@ -116,10 +129,10 @@ async def get_reading_stats(
             "$group": {
                 "_id": "$device_id",
                 "count": {"$sum": 1},
-                "avg_watts": {"$avg": "$watts"},
-                "min_watts": {"$min": "$watts"},
-                "max_watts": {"$max": "$watts"},
-                "total_watts_sum": {"$sum": "$watts"},
+                "avg_watts": {"$avg": {"$ifNull": ["$power_w", "$watts"]}},
+                "min_watts": {"$min": {"$ifNull": ["$power_w", "$watts"]}},
+                "max_watts": {"$max": {"$ifNull": ["$power_w", "$watts"]}},
+                "total_kwh": {"$sum": {"$ifNull": ["$energy_kwh", 0]}},
             }
         },
     ]
@@ -133,9 +146,8 @@ async def get_reading_stats(
         )
 
     r = results[0]
-    # Convert watt-readings to kWh (assuming 1-minute intervals between readings)
     duration_hours = (to_ts - from_ts).total_seconds() / 3600
-    total_kwh = (r["avg_watts"] * duration_hours) / 1000
+    total_kwh = r.get("total_kwh") or (r["avg_watts"] * duration_hours) / 1000
 
     return ReadingStatsResponse(
         device_id=device_id,
@@ -155,8 +167,15 @@ def format_reading_response(reading: ReadingDocument) -> ReadingResponse:
         id=str(reading._id),
         device_id=reading.device_id,
         household_id=reading.household_id,
-        watts=reading.watts,
-        voltage=reading.voltage,
-        current=reading.current,
+        power_w=reading.power_w,
+        voltage_v=reading.voltage_v,
+        current_a=reading.current_a,
+        energy_kwh=reading.energy_kwh,
+        frequency_hz=reading.frequency_hz,
+        power_factor=reading.power_factor,
+        source=reading.source,
+        watts=reading.power_w,
+        voltage=reading.voltage_v,
+        current=reading.current_a,
         timestamp=reading.timestamp,
     )
