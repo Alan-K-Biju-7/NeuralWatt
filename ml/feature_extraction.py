@@ -112,8 +112,9 @@ def extract_all_features(df: pd.DataFrame, window_size: int = WINDOW_SIZE_S) -> 
         group = group.reset_index(drop=True)
         power = group["power_w"]
         n = len(power)
+        starts = [0] if n <= window_size else range(0, n - window_size + 1, step)
 
-        for start in range(0, n - window_size, step):
+        for start in starts:
             window = power.iloc[start: start + window_size]
             features = extract_features_from_window(window)
             if not features:
