@@ -19,11 +19,9 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder
+import xgboost as xgb
 
-try:
-    from .feature_extraction import load_and_extract
-except ImportError:
-    from feature_extraction import load_and_extract
+from feature_extraction import load_and_extract
 
 MODELS_DIR = Path(__file__).parent / "models"
 DATA_DIR = Path(__file__).parent / "data"
@@ -73,16 +71,8 @@ def prepare_data(df: pd.DataFrame):
     return X, y, le
 
 
-def train(X_train, y_train):
+def train(X_train, y_train) -> xgb.XGBClassifier:
     """Fit XGBoost classifier on training data."""
-    try:
-        import xgboost as xgb
-    except ImportError as exc:
-        raise RuntimeError(
-            "xgboost is not installed. Install ML dependencies with: "
-            "python -m pip install -r ml/requirements.txt"
-        ) from exc
-
     model = xgb.XGBClassifier(**XGB_PARAMS)
     model.fit(X_train, y_train)
     return model
@@ -90,49 +80,13 @@ def train(X_train, y_train):
 
 def cross_validate_model(model, X, y) -> dict:
     """Stratified k-fold cross-validation."""
-    class_counts = np.bincount(y)
-    min_class_count = int(class_counts.min()) if len(class_counts) else 0
-    if min_class_count < 2:
-        return {
-            "cv_mean_accuracy": None,
-            "cv_std_accuracy": None,
-            "cv_fold_scores": [],
-            "cv_folds": 0,
-            "cv_skipped_reason": "Need at least 2 samples per class for stratified CV.",
-        }
-
-    n_splits = min(CV_FOLDS, min_class_count)
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=RANDOM_SEED)
+    cv = StratifiedKFold(n_splits=CV_FOLDS, shuffle=True, random_state=RANDOM_SEED)
     scores = cross_val_score(model, X, y, cv=cv, scoring="accuracy")
     return {
         "cv_mean_accuracy": float(scores.mean()),
         "cv_std_accuracy": float(scores.std()),
         "cv_fold_scores": scores.tolist(),
-        "cv_folds": n_splits,
     }
-
-
-def split_train_test(X, y):
-    """Use a stratified split when every class has enough samples."""
-    class_counts = np.bincount(y)
-    n_classes = len(class_counts)
-    test_count = int(np.ceil(len(y) * TEST_SIZE))
-    train_count = len(y) - test_count
-    can_split = (
-        len(y) >= 2
-        and n_classes > 1
-        and int(class_counts.min()) >= 2
-        and test_count >= n_classes
-        and train_count >= n_classes
-    )
-
-    if can_split:
-        return (*train_test_split(
-            X, y, test_size=TEST_SIZE, random_state=RANDOM_SEED, stratify=y
-        ), True)
-
-    print("Skipping stratified test split: need more samples per appliance class.")
-    return X, None, y, None, False
 
 
 def save_model(model, label_encoder: LabelEncoder, metadata: dict):
@@ -178,29 +132,20 @@ def main():
     print(f"Class distribution:\n{df['appliance_label'].value_counts()}\n")
 
     X, y, le = prepare_data(df)
-    X_train, X_test, y_train, y_test, has_test_split = split_train_test(X, y)
-    test_count = len(X_test) if has_test_split else 0
-    print(f"Train: {len(X_train)} samples | Test: {test_count} samples")
+    X_train, X_test, y_train, y_test = train_test_split(
+        X, y, test_size=TEST_SIZE, random_state=RANDOM_SEED, stratify=y
+    )
+    print(f"Train: {len(X_train)} samples | Test: {len(X_test)} samples")
 
     model = train(X_train, y_train)
 
     train_acc = float((model.predict(X_train) == y_train).mean())
-    test_acc = (
-        float((model.predict(X_test) == y_test).mean())
-        if has_test_split
-        else None
-    )
+    test_acc = float((model.predict(X_test) == y_test).mean())
     print(f"Train accuracy : {train_acc:.4f}")
-    if test_acc is None:
-        print("Test  accuracy : skipped")
-    else:
-        print(f"Test  accuracy : {test_acc:.4f}")
+    print(f"Test  accuracy : {test_acc:.4f}")
 
     cv_results = cross_validate_model(model, X, y)
-    if cv_results["cv_mean_accuracy"] is None:
-        print(f"CV mean        : skipped ({cv_results['cv_skipped_reason']})")
-    else:
-        print(f"CV mean        : {cv_results['cv_mean_accuracy']:.4f} +/- {cv_results['cv_std_accuracy']:.4f}")
+    print(f"CV mean        : {cv_results['cv_mean_accuracy']:.4f} +/- {cv_results['cv_std_accuracy']:.4f}")
 
     metadata = {
         "train_samples": int(len(X_train)),
