@@ -48,5 +48,7 @@ docker-compose.override.yml
 *.h5
 *.pt
 *.onnx
-ml/models/
+# Keep trained artifacts out of git, but allow the folder placeholder.
+ml/models/*
+!ml/models/.gitkeep
 simulator/.env
