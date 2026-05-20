@@ -26,9 +26,13 @@ from sklearn.metrics import (
 )
 from sklearn.model_selection import train_test_split
 
-from feature_extraction import load_and_extract
+try:
+    from .feature_extraction import load_and_extract
+except ImportError:
+    from feature_extraction import load_and_extract
 
 RANDOM_SEED = 42
+TEST_SIZE = 0.2
 RESULTS_DIR = Path(__file__).parent / "results"
 
 
@@ -65,11 +69,11 @@ def evaluate(artifact: dict, df: pd.DataFrame) -> dict:
     y_pred = le.inverse_transform(y_pred_enc)
 
     acc = accuracy_score(y_true, y_pred)
-    report_text = classification_report(y_true, y_pred)
+    report_text = classification_report(y_true, y_pred, zero_division=0)
     cm = confusion_matrix(y_true, y_pred, labels=le.classes_)
 
     precision, recall, f1, support = precision_recall_fscore_support(
-        y_true, y_pred, labels=le.classes_, average=None
+        y_true, y_pred, labels=le.classes_, average=None, zero_division=0
     )
 
     per_class = {}
@@ -129,6 +133,33 @@ def print_summary(results: dict):
     print("\n" + results["classification_report_text"])
 
 
+def select_eval_data(df: pd.DataFrame) -> tuple[pd.DataFrame, bool]:
+    """Use a held-out split when labels have enough samples; otherwise use all rows."""
+    counts = df["appliance_label"].value_counts()
+    n_classes = len(counts)
+    test_count = int(np.ceil(len(df) * TEST_SIZE))
+    train_count = len(df) - test_count
+    can_split = (
+        len(df) >= 2
+        and n_classes > 1
+        and int(counts.min()) >= 2
+        and test_count >= n_classes
+        and train_count >= n_classes
+    )
+
+    if can_split:
+        _, df_test = train_test_split(
+            df,
+            test_size=TEST_SIZE,
+            random_state=RANDOM_SEED,
+            stratify=df["appliance_label"],
+        )
+        return df_test, True
+
+    print("Skipping held-out split: need more samples per appliance class.")
+    return df, False
+
+
 def main():
     parser = argparse.ArgumentParser(description="Evaluate NeuralWatt NILM classifier")
     parser.add_argument("--model", required=True, help="Path to nilm_v1.pkl")
@@ -148,12 +179,12 @@ def main():
     else:
         parser.error("Provide --data or --features")
 
-    _, df_test = train_test_split(
-        df, test_size=0.2, random_state=RANDOM_SEED, stratify=df["appliance_label"]
-    )
-    print(f"Evaluating on {len(df_test)} held-out test windows")
+    df_test, used_held_out_split = select_eval_data(df)
+    split_label = "held-out test" if used_held_out_split else "available"
+    print(f"Evaluating on {len(df_test)} {split_label} windows")
 
     results = evaluate(artifact, df_test)
+    results["used_held_out_split"] = used_held_out_split
     print_summary(results)
     save_results(results, Path(args.output))
 
