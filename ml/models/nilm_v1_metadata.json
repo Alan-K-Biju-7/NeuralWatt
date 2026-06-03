@@ -1,0 +1,45 @@
+{
+  "train_samples": 40,
+  "test_samples": 11,
+  "n_classes": 3,
+  "classes": [
+    "electric_kettle",
+    "fan",
+    "mixer_grinder"
+  ],
+  "train_accuracy": 1.0,
+  "test_accuracy": 0.8181818181818182,
+  "has_test_split": true,
+  "feature_cols": [
+    "mean_power",
+    "max_power",
+    "min_power",
+    "power_delta",
+    "std_power",
+    "rise_time_s",
+    "steady_state_w",
+    "is_cyclic",
+    "on_fraction"
+  ],
+  "xgb_params": {
+    "n_estimators": 200,
+    "max_depth": 6,
+    "learning_rate": 0.1,
+    "subsample": 0.8,
+    "colsample_bytree": 0.8,
+    "eval_metric": "mlogloss",
+    "random_state": 42,
+    "n_jobs": -1
+  },
+  "window_size_s": 30,
+  "cv_mean_accuracy": 0.9218181818181819,
+  "cv_std_accuracy": 0.07443450723803169,
+  "cv_fold_scores": [
+    0.9090909090909091,
+    0.8,
+    0.9,
+    1.0,
+    1.0
+  ],
+  "cv_folds": 5
+}

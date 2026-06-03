@@ -48,10 +48,13 @@ docker-compose.override.yml
 *.h5
 *.pt
 *.onnx
-# Keep trained artifacts out of git, but allow the folder placeholder.
+# Keep binary trained artifacts out of git, but allow lightweight metadata.
 ml/models/*
 !ml/models/.gitkeep
-ml/data/features_extracted.csv
+!ml/models/*_metadata.json
 ml/results/*
 !ml/results/.gitkeep
+!ml/results/*.csv
+!ml/results/*.json
+!ml/results/*.txt
 simulator/.env

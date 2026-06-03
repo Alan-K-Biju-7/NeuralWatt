@@ -1,0 +1,8 @@
+file,rows,appliance_label,session_id,mode,sample_interval_sec,min_power_w,mean_power_w,max_power_w,nonzero_rows,max_gap_s,missing_gap_count,estimated_missing_rows,outlier_rows
+alaina_plug4_kettle_boil_2026-06-02_S001.csv,83,electric_kettle,S001,boil,2.0,0.0,739.9723975903614,1415.157,44,2.362698,0,0,0
+alaina_plug4_kettle_boil_2026-06-02_S002.csv,87,electric_kettle,S002,boil,2.0,0.0,958.677356321839,1382.987,61,2.390971,0,0,0
+alaina_plug4_kettle_boil_2026-06-02_S003.csv,84,electric_kettle,S003,boil,2.0,0.0,1081.2144523809523,1383.848,67,2.418971,0,0,0
+alaina_plug4_tablefan_speed1_2026-06-03_S004.csv,181,fan,S004,speed_1,5.0,0.0,69.4008674033149,92.672,168,5.485384,0,0,0
+alaina_plug4_tablefan_speed2_2026-06-03_S005.csv,182,fan,S005,speed_2,5.0,0.0,65.46541758241757,95.931,166,5.419612,0,0,0
+alaina_plug4_tablefan_speed3_2026-06-03_S006.csv,183,fan,S006,speed_3,5.0,0.0,64.88719672131147,80.032,170,6.246078,0,0,0
+anllia_plug1_mixer_final_2026-06-02_S003.csv,107,mixer_grinder,5bd62096,multi_cycle,1.0,2.146,95.44220560747664,323.724,46,9.497833,17,36,0
