@@ -59,6 +59,69 @@ Month 1 transition.
 - `GET /households/{household_id}/devices/{device_id}/analytics/cost`
 - `GET /households/{household_id}/devices/{device_id}/analytics/report`
 
+## NILM Prediction
+
+- `POST /nilm/predict`
+
+Requires `Authorization: Bearer <jwt>`.
+
+Example payload:
+
+```json
+{
+  "window_size_s": 30,
+  "readings": [
+    {
+      "timestamp": "2026-06-08T12:00:00Z",
+      "power_w": 72.5,
+      "voltage_v": 235.0,
+      "current_a": 0.31
+    },
+    {
+      "timestamp": "2026-06-08T12:00:05Z",
+      "power_w": 73.1,
+      "voltage_v": 235.2,
+      "current_a": 0.31
+    },
+    {
+      "timestamp": "2026-06-08T12:00:10Z",
+      "power_w": 71.8,
+      "voltage_v": 234.9,
+      "current_a": 0.30
+    }
+  ]
+}
+```
+
+Response shape:
+
+```json
+{
+  "model_version": "nilm_v1",
+  "feature_set_version": "tapo_signature_v2",
+  "window_size_s": 30,
+  "classes": ["electric_kettle", "fan", "fridge", "iron", "mixer_grinder", "washing_machine"],
+  "windows": [
+    {
+      "window_index": 0,
+      "predicted_appliance": "fridge",
+      "confidence": 0.997,
+      "probabilities": {
+        "electric_kettle": 0.001,
+        "fan": 0.001,
+        "fridge": 0.997,
+        "iron": 0.0,
+        "mixer_grinder": 0.001,
+        "washing_machine": 0.001
+      }
+    }
+  ]
+}
+```
+
+This endpoint currently uses the smart-plug appliance signature classifier. It
+does not yet perform aggregate household disaggregation.
+
 ## Anomalies And Alerts
 
 - `GET /households/{household_id}/devices/{device_id}/anomalies`

@@ -27,7 +27,8 @@ The project is currently in a strong Month 1 / early Month 2 stage.
 | Z-score anomaly detection | Implemented |
 | Simulator data source | Implemented |
 | Real Tapo P110 data pipeline | Implemented |
-| NILM baseline classifier | Implemented five-class baseline |
+| NILM baseline classifier | Implemented six-class baseline |
+| NILM prediction CLI/API | Implemented |
 | Aggregate main-line NILM | Not yet implemented |
 | Forecasting, solar, recommendations, SHAP | Planned |
 
@@ -77,6 +78,7 @@ React dashboard
 
 ML pipeline:
 Tapo raw CSV -> merge -> feature extraction -> XGBoost NILM baseline -> evaluation
+Trained NILM baseline -> CLI/API prediction -> future dashboard appliance cards
 ```
 
 More detail is available in:
@@ -196,10 +198,17 @@ python data/merge_raw.py
 python feature_extraction.py data/appliance_data_real.csv
 python train_nilm.py --data data/appliance_data_real.csv
 python evaluate.py --model models/nilm_v1.pkl --features data/features_extracted.csv
+python predict_nilm.py --csv data/appliance_data_real.csv --limit 10
 ```
 
 `models/nilm_v1.pkl` is intentionally ignored by git because it is a binary
 artifact. The metadata and evaluation reports are tracked.
+
+Prediction is available in two forms:
+
+- CLI: `python ml/predict_nilm.py --csv ml/data/appliance_data_real.csv --limit 10`
+- API: `POST /api/v1/nilm/predict` with JWT auth and a list of timestamped
+  readings.
 
 ## Testing
 
@@ -219,7 +228,7 @@ npm run build
 ML syntax check:
 
 ```bash
-python -m py_compile ml/feature_extraction.py ml/train_nilm.py ml/evaluate.py ml/data/merge_raw.py
+python -m py_compile ml/feature_extraction.py ml/train_nilm.py ml/evaluate.py ml/prediction.py ml/predict_nilm.py ml/data/merge_raw.py
 ```
 
 Latest verified state:
@@ -247,10 +256,9 @@ Near-term priorities:
 
 1. Collect more real appliance sessions, especially extra fridge, iron,
    washing-machine, and mixer repeats plus new geyser and AC captures.
-2. Add a NILM prediction API endpoint.
-3. Add appliance breakdown cards/charts to the dashboard.
-4. Collect synchronized aggregate household readings.
-5. Move from smart-plug signature classification to true aggregate NILM.
+2. Add appliance breakdown cards/charts to the dashboard.
+3. Collect synchronized aggregate household readings.
+4. Move from smart-plug signature classification to true aggregate NILM.
 
 Next intelligence layer:
 
