@@ -21,6 +21,9 @@ class Settings(BaseSettings):
     app_host: str = "0.0.0.0"
     app_port: int = 8000
     debug: bool = True
+    nilm_model_path: str = str(
+        Path(__file__).resolve().parents[3] / "ml" / "models" / "nilm_v1.pkl"
+    )
 
     # CORS
     cors_origins: str = "http://localhost:5173,http://localhost:3000,http://localhost:3001,http://127.0.0.1:5173,http://127.0.0.1:3000,http://127.0.0.1:3001"
