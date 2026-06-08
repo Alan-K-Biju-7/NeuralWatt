@@ -75,4 +75,8 @@ export const analyticsAPI = {
     api.get(`/households/${hid}/devices/${did}/analytics/cost`,    { params: { days } }),
 };
 
+export const nilmAPI = {
+  predict: (data) => api.post("/nilm/predict", data),
+};
+
 export default api;
