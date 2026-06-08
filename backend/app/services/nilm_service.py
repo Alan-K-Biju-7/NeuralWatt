@@ -73,8 +73,13 @@ def predict_nilm_windows(payload: NILMPredictRequest) -> NILMPredictResponse:
         ) from exc
     except ValueError as exc:
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=str(exc),
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"NILM model could not be loaded: {exc}",
+        ) from exc
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"NILM model could not be loaded: {exc}",
         ) from exc
 
     frame = pd.DataFrame(_request_to_records(payload))

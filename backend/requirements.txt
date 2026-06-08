@@ -20,6 +20,12 @@ python-multipart==0.0.17
 # HTTP client (for weather API later)
 httpx==0.28.1
 
+# NILM prediction
+pandas
+numpy
+scikit-learn
+xgboost
+
 # Date & time
 python-dateutil==2.9.0
 

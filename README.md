@@ -231,9 +231,16 @@ ML syntax check:
 python -m py_compile ml/feature_extraction.py ml/train_nilm.py ml/evaluate.py ml/prediction.py ml/predict_nilm.py ml/data/merge_raw.py
 ```
 
+On macOS, the backend virtualenv may need the native OpenMP runtime for the
+PyPI XGBoost wheel:
+
+```bash
+brew install libomp
+```
+
 Latest verified state:
 
-- Backend tests: `8 passed`
+- Backend tests: `12 passed`
 - Frontend build: passed
 - ML scripts: compile successfully
 
