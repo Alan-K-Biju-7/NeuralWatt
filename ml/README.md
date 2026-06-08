@@ -60,6 +60,9 @@ python train_nilm.py --data data/sample_appliance_data.csv
 
 # Evaluate
 python evaluate.py --model models/nilm_v1.pkl --features data/features_extracted.csv
+
+# Predict
+python predict_nilm.py --csv data/appliance_data_real.csv --limit 10
 ```
 
 ## Real Tapo P110 Exports
@@ -72,6 +75,7 @@ python data/merge_raw.py
 python feature_extraction.py data/appliance_data_real.csv
 python train_nilm.py --data data/appliance_data_real.csv
 python evaluate.py --model models/nilm_v1.pkl --features data/features_extracted.csv
+python predict_nilm.py --csv data/appliance_data_real.csv --limit 10
 ```
 
 The current real dataset contains:
@@ -110,6 +114,25 @@ sample interval are kept in the feature CSV for inspection but are excluded from
 model training to avoid collection-setting leakage. The evaluation currently
 splits windows from the same captures, so treat the score as a strong
 development baseline rather than final aggregate-NILM proof.
+
+## Prediction
+
+After training creates `models/nilm_v1.pkl`, run:
+
+```bash
+python predict_nilm.py --csv data/appliance_data_real.csv --limit 10
+```
+
+The predictor accepts canonical readings (`timestamp`, `power_w`) and common
+Tapo-style columns normalized by the feature extractor. It uses the same
+30-second windows as training and returns `predicted_appliance`, `confidence`,
+and per-class probabilities when output is written to CSV:
+
+```bash
+python predict_nilm.py \
+  --csv data/appliance_data_real.csv \
+  --output results/predictions.csv
+```
 
 ## Tapo P110 Screenshot-Derived NILM Data
 
