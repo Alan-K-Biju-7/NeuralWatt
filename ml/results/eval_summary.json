@@ -1,46 +1,100 @@
 {
-  "accuracy": 0.8181818181818182,
+  "accuracy": 0.9930313588850174,
   "per_class": {
     "electric_kettle": {
-      "precision": 1.0,
-      "recall": 0.6666666666666666,
-      "f1": 0.8,
-      "support": 3
+      "precision": 0.8888888888888888,
+      "recall": 1.0,
+      "f1": 0.9411764705882353,
+      "support": 8
     },
     "fan": {
-      "precision": 0.875,
+      "precision": 1.0,
       "recall": 1.0,
-      "f1": 0.9333333333333333,
-      "support": 7
+      "f1": 1.0,
+      "support": 38
+    },
+    "fridge": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 78
+    },
+    "iron": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 24
     },
     "mixer_grinder": {
-      "precision": 0.0,
-      "recall": 0.0,
-      "f1": 0.0,
-      "support": 1
+      "precision": 1.0,
+      "recall": 0.9310344827586207,
+      "f1": 0.9642857142857143,
+      "support": 29
+    },
+    "washing_machine": {
+      "precision": 0.990990990990991,
+      "recall": 1.0,
+      "f1": 0.995475113122172,
+      "support": 110
     }
   },
   "confusion_matrix": [
     [
-      2,
+      8,
       0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      38,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      78,
+      0,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      24,
+      0,
+      0
+    ],
+    [
+      1,
+      0,
+      0,
+      0,
+      27,
       1
     ],
     [
       0,
-      7,
-      0
-    ],
-    [
       0,
-      1,
-      0
+      0,
+      0,
+      0,
+      110
     ]
   ],
   "class_labels": [
     "electric_kettle",
     "fan",
-    "mixer_grinder"
+    "fridge",
+    "iron",
+    "mixer_grinder",
+    "washing_machine"
   ],
   "used_held_out_split": true
 }
