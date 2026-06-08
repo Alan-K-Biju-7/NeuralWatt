@@ -19,11 +19,12 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
 from sklearn.preprocessing import LabelEncoder
+from sklearn.utils.class_weight import compute_sample_weight
 
 try:
-    from .feature_extraction import load_and_extract
+    from .feature_extraction import FEATURE_COLUMNS, load_and_extract
 except ImportError:
-    from feature_extraction import load_and_extract
+    from feature_extraction import FEATURE_COLUMNS, load_and_extract
 
 MODELS_DIR = Path(__file__).parent / "models"
 DATA_DIR = Path(__file__).parent / "data"
@@ -31,29 +32,21 @@ RANDOM_SEED = 42
 TEST_SIZE = 0.2
 CV_FOLDS = 5
 
-# Baseline hyperparameters — tune after real Tapo P110 data arrives
+# Feature-rich XGBoost baseline for low-frequency Tapo P110 appliance signatures.
 XGB_PARAMS = {
-    "n_estimators": 200,
-    "max_depth": 6,
-    "learning_rate": 0.1,
-    "subsample": 0.8,
-    "colsample_bytree": 0.8,
+    "n_estimators": 350,
+    "max_depth": 4,
+    "learning_rate": 0.05,
+    "subsample": 0.85,
+    "colsample_bytree": 0.9,
+    "min_child_weight": 1,
+    "reg_lambda": 1.5,
     "eval_metric": "mlogloss",
     "random_state": RANDOM_SEED,
     "n_jobs": -1,
 }
 
-FEATURE_COLS = [
-    "mean_power",
-    "max_power",
-    "min_power",
-    "power_delta",
-    "std_power",
-    "rise_time_s",
-    "steady_state_w",
-    "is_cyclic",
-    "on_fraction",
-]
+FEATURE_COLS = FEATURE_COLUMNS
 
 
 def load_features(path: str) -> pd.DataFrame:
@@ -84,7 +77,8 @@ def train(X_train, y_train):
         ) from exc
 
     model = xgb.XGBClassifier(**XGB_PARAMS)
-    model.fit(X_train, y_train)
+    sample_weight = compute_sample_weight(class_weight="balanced", y=y_train)
+    model.fit(X_train, y_train, sample_weight=sample_weight)
     return model
 
 
@@ -155,6 +149,22 @@ def save_model(model, label_encoder: LabelEncoder, metadata: dict):
     print(f"Metadata saved -> {meta_path}")
 
 
+def get_feature_importance(model, feature_cols: list[str], limit: int = 12) -> list[dict]:
+    """Return top model feature importances when available."""
+    importances = getattr(model, "feature_importances_", None)
+    if importances is None:
+        return []
+    pairs = sorted(
+        zip(feature_cols, importances),
+        key=lambda item: float(item[1]),
+        reverse=True,
+    )
+    return [
+        {"feature": name, "importance": float(score)}
+        for name, score in pairs[:limit]
+    ]
+
+
 def main():
     parser = argparse.ArgumentParser(description="Train NeuralWatt NILM classifier")
     parser.add_argument("--data", type=str, help="Path to raw labelled appliance CSV")
@@ -205,14 +215,25 @@ def main():
     metadata = {
         "train_samples": int(len(X_train)),
         "test_samples": int(test_count),
+        "total_feature_windows": int(len(df)),
         "n_classes": int(le.classes_.shape[0]),
         "classes": le.classes_.tolist(),
+        "class_distribution": {
+            label: int(count)
+            for label, count in df["appliance_label"].value_counts().items()
+        },
         "train_accuracy": train_acc,
         "test_accuracy": test_acc,
         "has_test_split": has_test_split,
+        "feature_set_version": "tapo_signature_v2",
         "feature_cols": FEATURE_COLS,
+        "top_feature_importance": get_feature_importance(model, FEATURE_COLS),
         "xgb_params": XGB_PARAMS,
         "window_size_s": args.window,
+        "notes": (
+            "This is a smart-plug appliance signature classifier. It is not yet "
+            "aggregate household NILM disaggregation."
+        ),
         **cv_results,
     }
     save_model(model, le, metadata)

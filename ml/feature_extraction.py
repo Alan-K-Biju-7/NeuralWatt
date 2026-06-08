@@ -28,6 +28,7 @@ SUPPORTED_APPLIANCES = [
 
 ON_THRESHOLD_W = 5.0
 WINDOW_SIZE_S = 30
+MIN_WINDOW_SAMPLES = 3
 DATA_DIR = Path(__file__).parent / "data"
 
 TAPO_COLUMN_MAP = {
@@ -39,10 +40,14 @@ TAPO_COLUMN_MAP = {
 }
 
 APPLIANCE_LABEL_MAP = {
+    "fridge": "fridge",
+    "iron": "iron",
     "kettle": "electric_kettle",
     "electric_kettle": "electric_kettle",
     "table_fan": "fan",
     "fan": "fan",
+    "washing_machine": "washing_machine",
+    "mixie": "mixer_grinder",
     "mixer": "mixer_grinder",
     "mixer_grinder": "mixer_grinder",
 }
@@ -55,6 +60,37 @@ TAPO_HINT_COLUMNS = {
     "plug_model",
     "sample_interval_sec",
 }
+
+FEATURE_COLUMNS = [
+    "mean_power",
+    "max_power",
+    "min_power",
+    "median_power",
+    "p10_power",
+    "p25_power",
+    "p75_power",
+    "p90_power",
+    "power_delta",
+    "std_power",
+    "steady_state_w",
+    "active_mean_power",
+    "active_max_power",
+    "on_fraction",
+    "zero_fraction",
+    "high_power_fraction",
+    "very_high_power_fraction",
+    "transition_count",
+    "mean_abs_step",
+    "max_step_up",
+    "max_step_down",
+    "rise_time_s",
+    "energy_kwh_est",
+    "mean_voltage",
+    "std_voltage",
+    "mean_current",
+    "max_current",
+    "is_cyclic",
+]
 
 
 def _rename_known_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -91,6 +127,36 @@ def _finalize_appliance_frame(df: pd.DataFrame) -> pd.DataFrame:
     return df.sort_values("timestamp").reset_index(drop=True)
 
 
+def _numeric_window_values(window: pd.DataFrame, column: str) -> np.ndarray:
+    if column not in window.columns:
+        return np.zeros(len(window), dtype=float)
+    return (
+        pd.to_numeric(window[column], errors="coerce")
+        .fillna(0.0)
+        .to_numpy(dtype=float)
+    )
+
+
+def _window_time_features(window: pd.DataFrame) -> tuple[float, float, np.ndarray]:
+    if "timestamp" not in window.columns or len(window) <= 1:
+        sample_interval = 1.0
+        duration = float(max(len(window) - 1, 0))
+        return duration, sample_interval, np.full(len(window), sample_interval)
+
+    timestamps = pd.to_datetime(window["timestamp"], errors="coerce")
+    deltas = timestamps.diff().dt.total_seconds().dropna()
+    deltas = deltas[deltas > 0]
+    if deltas.empty:
+        sample_interval = 1.0
+        duration = float(max(len(window) - 1, 0))
+        intervals = np.full(len(window), sample_interval)
+    else:
+        sample_interval = float(deltas.median())
+        duration = float((timestamps.iloc[-1] - timestamps.iloc[0]).total_seconds())
+        intervals = np.concatenate(([sample_interval], deltas.to_numpy(dtype=float)))
+    return max(duration, 0.0), sample_interval, intervals
+
+
 def load_csv(filepath: str) -> pd.DataFrame:
     """
     Load a labelled appliance CSV and normalize known Tapo P110 column variants.
@@ -120,63 +186,106 @@ def load_tapo_csv(filepath: str, label: str | None = None) -> pd.DataFrame:
     return _finalize_appliance_frame(df)
 
 
-def extract_features_from_window(window: pd.Series) -> dict:
+def extract_features_from_window(window: pd.DataFrame | pd.Series) -> dict:
     """
-    Extract a feature vector from a single power window (array of watts).
+    Extract a feature vector from a single appliance power window.
 
-    Features:
-        mean_power     - average watts during window
-        max_power      - peak watts during window
-        min_power      - minimum watts during window
-        power_delta    - max - min swing
-        std_power      - standard deviation (variance proxy)
-        rise_time_s    - index of peak power (proxy for rise time)
-        steady_state_w - median watts in stable middle third
-        is_cyclic      - 1 if power crosses mean more than 4 times
-        on_fraction    - fraction of window where power > ON_THRESHOLD_W
+    The feature set intentionally mixes steady-state, transient, duty-cycle,
+    and light electrical-context signals. This helps separate appliances that
+    sit in similar wattage bands, such as fridge and fan.
     """
-    values = window.values.astype(float)
+    if isinstance(window, pd.Series):
+        window = pd.DataFrame({"power_w": window})
+
+    values = _numeric_window_values(window, "power_w")
     n = len(values)
     if n == 0:
         return {}
 
+    duration_s, sample_interval_s, intervals = _window_time_features(window)
     mean_p = float(np.mean(values))
     max_p = float(np.max(values))
     min_p = float(np.min(values))
+    median_p = float(np.median(values))
     std_p = float(np.std(values))
     delta_p = max_p - min_p
+    p10, p25, p75, p90 = np.percentile(values, [10, 25, 75, 90])
 
     rise_idx = int(np.argmax(values))
-    rise_time_s = float(rise_idx)
+    rise_time_s = float(rise_idx * sample_interval_s)
 
     third = max(1, n // 3)
     steady_state = float(np.median(values[third: 2 * third]))
 
-    crossings = int(np.sum(np.diff(np.sign(values - mean_p)) != 0))
+    centered = values - mean_p
+    crossings = int(np.sum(np.diff(np.sign(centered)) != 0))
     is_cyclic = 1 if crossings > 4 else 0
 
-    on_fraction = float(np.mean(values > ON_THRESHOLD_W))
+    active_mask = values > ON_THRESHOLD_W
+    on_fraction = float(np.mean(active_mask))
+    zero_fraction = float(np.mean(values <= ON_THRESHOLD_W))
+    high_power_fraction = float(np.mean(values >= 100.0))
+    very_high_power_fraction = float(np.mean(values >= 1000.0))
+    active_values = values[active_mask]
+    active_mean = float(np.mean(active_values)) if len(active_values) else 0.0
+    active_max = float(np.max(active_values)) if len(active_values) else 0.0
+
+    on_state = active_mask.astype(int)
+    transition_count = int(np.sum(np.abs(np.diff(on_state)))) if n > 1 else 0
+
+    steps = np.diff(values)
+    mean_abs_step = float(np.mean(np.abs(steps))) if len(steps) else 0.0
+    max_step_up = float(np.max(steps)) if len(steps) else 0.0
+    max_step_down = float(abs(np.min(steps))) if len(steps) else 0.0
+
+    if len(intervals) != n:
+        intervals = np.full(n, sample_interval_s)
+    energy_kwh = float(np.sum(values * intervals) / 3_600_000.0)
+
+    voltage = _numeric_window_values(window, "voltage_v")
+    current = _numeric_window_values(window, "current_a")
 
     return {
         "mean_power": mean_p,
         "max_power": max_p,
         "min_power": min_p,
+        "median_power": median_p,
+        "p10_power": float(p10),
+        "p25_power": float(p25),
+        "p75_power": float(p75),
+        "p90_power": float(p90),
         "power_delta": delta_p,
         "std_power": std_p,
-        "rise_time_s": rise_time_s,
         "steady_state_w": steady_state,
-        "is_cyclic": is_cyclic,
+        "active_mean_power": active_mean,
+        "active_max_power": active_max,
         "on_fraction": on_fraction,
+        "zero_fraction": zero_fraction,
+        "high_power_fraction": high_power_fraction,
+        "very_high_power_fraction": very_high_power_fraction,
+        "transition_count": transition_count,
+        "mean_abs_step": mean_abs_step,
+        "max_step_up": max_step_up,
+        "max_step_down": max_step_down,
+        "rise_time_s": rise_time_s,
+        "duration_s": duration_s,
+        "sample_interval_median_s": sample_interval_s,
+        "energy_kwh_est": energy_kwh,
+        "mean_voltage": float(np.mean(voltage)) if len(voltage) else 0.0,
+        "std_voltage": float(np.std(voltage)) if len(voltage) else 0.0,
+        "mean_current": float(np.mean(current)) if len(current) else 0.0,
+        "max_current": float(np.max(current)) if len(current) else 0.0,
+        "is_cyclic": is_cyclic,
     }
 
 
 def extract_all_features(df: pd.DataFrame, window_size: int = WINDOW_SIZE_S) -> pd.DataFrame:
     """
-    Slide a window across each appliance group and extract features.
+    Slide a time window across each appliance capture and extract features.
     Uses 50% overlap between consecutive windows.
     """
     records = []
-    step = max(1, window_size // 2)
+    step_s = max(1, window_size // 2)
 
     session_col = next(
         (col for col in ("capture_id", "session_id") if col in df.columns),
@@ -190,13 +299,41 @@ def extract_all_features(df: pd.DataFrame, window_size: int = WINDOW_SIZE_S) -> 
 
     for key, group in grouped:
         label = key[0] if isinstance(key, tuple) else key
-        group = group.reset_index(drop=True)
-        power = group["power_w"]
-        n = len(power)
-        starts = [0] if n <= window_size else range(0, n - window_size + 1, step)
+        group = group.sort_values("timestamp").reset_index(drop=True)
+        n = len(group)
+        if n == 0:
+            continue
 
+        if "timestamp" in group.columns and n >= MIN_WINDOW_SAMPLES:
+            start_time = group["timestamp"].iloc[0]
+            end_time = group["timestamp"].iloc[-1]
+            window_delta = pd.Timedelta(seconds=window_size)
+            step_delta = pd.Timedelta(seconds=step_s)
+            starts = []
+            current = start_time
+            while current <= end_time:
+                starts.append(current)
+                current += step_delta
+
+            for start in starts:
+                stop = start + window_delta
+                window = group[
+                    (group["timestamp"] >= start)
+                    & (group["timestamp"] < stop)
+                ]
+                if len(window) < MIN_WINDOW_SAMPLES:
+                    continue
+                features = extract_features_from_window(window)
+                if not features:
+                    continue
+                features["appliance_label"] = label
+                records.append(features)
+            continue
+
+        step_rows = max(1, window_size // 2)
+        starts = [0] if n <= window_size else range(0, n - window_size + 1, step_rows)
         for start in starts:
-            window = power.iloc[start: start + window_size]
+            window = group.iloc[start: start + window_size]
             features = extract_features_from_window(window)
             if not features:
                 continue
