@@ -78,14 +78,38 @@ The current real dataset contains:
 
 | Appliance | Captures | Label |
 |---|---:|---|
+| fridge normal | 1 | `fridge` |
+| washing machine normal wash | 1 | `washing_machine` |
 | kettle boil | 3 | `electric_kettle` |
 | table fan speeds 1-3 | 3 | `fan` |
-| mixer multi-cycle | 1 | `mixer_grinder` |
+| iron multi-cycle | 1 | `iron` |
+| mixer multi-cycle | 2 | `mixer_grinder` |
+| mixie normal | 1 | `mixer_grinder` |
 
 `data/raw_quality_report.csv` records row counts, max power, missing timing
 gaps, and outlier counts for each raw capture. The current files have no power
-outliers. The mixer capture has timing gaps, so treat mixer metrics as early
-baseline results until more mixer sessions are collected.
+outliers. The fridge, washing-machine, and mixer captures have timing gaps, so
+prefer collecting additional sessions before making final accuracy claims.
+
+Current baseline:
+
+| Metric | Value |
+|---|---:|
+| Classes | 6 |
+| Raw rows | 6,082 |
+| Feature windows | 1,433 |
+| Feature set | `tapo_signature_v2` |
+| Test accuracy | `99.30%` |
+| CV mean accuracy | `99.44%` |
+| CV std deviation | `0.0036` |
+
+The `tapo_signature_v2` feature set uses 30-second time windows and trains on
+steady-state power, quantiles, active-power statistics, on/off transitions, step
+changes, estimated window energy, and voltage/current features. Duration and
+sample interval are kept in the feature CSV for inspection but are excluded from
+model training to avoid collection-setting leakage. The evaluation currently
+splits windows from the same captures, so treat the score as a strong
+development baseline rather than final aggregate-NILM proof.
 
 ## Tapo P110 Screenshot-Derived NILM Data
 
@@ -142,5 +166,5 @@ For model training, combine labelled appliance captures before running
 `feature_extraction.load_tapo_csv()` normalizes common Tapo/API fields such as
 `timestamp_utc`, `current_power`, `appliance`, and `state` into the canonical
 `timestamp`, `power_w`, `appliance_label`, and `relay_state` schema. It also
-maps `kettle`, `table_fan`, and `mixer` into the training labels
-`electric_kettle`, `fan`, and `mixer_grinder`.
+maps raw names such as `kettle`, `table_fan`, `fridge`, `iron`,
+`washing_machine`, `mixie`, and `mixer` into stable training labels.
