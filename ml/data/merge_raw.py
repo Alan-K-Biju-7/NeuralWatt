@@ -21,19 +21,27 @@ QUALITY_FILE = Path(__file__).parent / "raw_quality_report.csv"
 
 # Map filename -> canonical appliance label.
 FILES = {
+    "abel_plug2_fridge_normal_2026-06-02_S001.csv": "fridge",
+    "abel_plug2_mixie_normal_2026-06-03_S003.csv": "mixer_grinder",
+    "abel_plug2_washing_machine_normal_2026-06-03_S002.csv": "washing_machine",
     "alaina_plug4_kettle_boil_2026-06-02_S001.csv": "electric_kettle",
     "alaina_plug4_kettle_boil_2026-06-02_S002.csv": "electric_kettle",
     "alaina_plug4_kettle_boil_2026-06-02_S003.csv": "electric_kettle",
     "alaina_plug4_tablefan_speed1_2026-06-03_S004.csv": "fan",
     "alaina_plug4_tablefan_speed2_2026-06-03_S005.csv": "fan",
     "alaina_plug4_tablefan_speed3_2026-06-03_S006.csv": "fan",
+    "anllia_plug1_iron_long_2026-06-03_S002.csv": "iron",
     "anllia_plug1_mixer_final_2026-06-02_S003.csv": "mixer_grinder",
+    "anllia_plug1_mixer_long_2026-06-02_S004.csv": "mixer_grinder",
 }
 
 EXPECTED_MAX_W = {
     "electric_kettle": 2500.0,
     "fan": 150.0,
+    "fridge": 400.0,
+    "iron": 2500.0,
     "mixer_grinder": 1000.0,
+    "washing_machine": 2500.0,
 }
 
 OUTPUT_COLUMNS = [
