@@ -80,3 +80,20 @@ export const nilmAPI = {
 };
 
 export default api;
+
+
+export const nilmAPI = {
+  predict: async (readings, windowSizeS = 30) => {
+    const token = localStorage.getItem("token");
+    const res = await fetch(`${API_BASE}/api/v1/nilm/predict`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ readings, window_size_s: windowSizeS }),
+    });
+    if (!res.ok) throw new Error("NILM predict failed");
+    return res.json();
+  },
+};
