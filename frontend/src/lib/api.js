@@ -51,6 +51,10 @@ export const anomalyAPI = {
     api.get(`/households/${hid}/devices/${did}/anomalies`, { params }),
   baseline: (hid, did) =>
     api.get(`/households/${hid}/devices/${did}/baseline`),
+  triggeredAlerts: (hid, limit = 20) =>
+    api.get("/anomalies/triggered-alerts", {
+      params: { household_id: hid, limit },
+    }),
 };
 
 export const alertAPI = {
