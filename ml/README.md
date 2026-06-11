@@ -83,9 +83,10 @@ The current real dataset contains:
 | Appliance | Captures | Label |
 |---|---:|---|
 | fridge normal | 1 | `fridge` |
-| washing machine normal wash | 1 | `washing_machine` |
+| washing machine normal wash | 3 | `washing_machine` |
+| washing machine super quick wash | 1 | `washing_machine` |
 | kettle boil | 3 | `electric_kettle` |
-| table fan speeds 1-3 | 3 | `fan` |
+| table fan speeds 1-3 | 6 | `fan` |
 | iron multi-cycle | 1 | `iron` |
 | mixer multi-cycle | 2 | `mixer_grinder` |
 | mixie normal | 1 | `mixer_grinder` |
@@ -100,12 +101,12 @@ Current baseline:
 | Metric | Value |
 |---|---:|
 | Classes | 6 |
-| Raw rows | 6,082 |
-| Feature windows | 1,433 |
+| Raw rows | 7,911 |
+| Feature windows | 2,092 |
 | Feature set | `tapo_signature_v2` |
-| Test accuracy | `99.30%` |
-| CV mean accuracy | `99.44%` |
-| CV std deviation | `0.0036` |
+| Test accuracy | `99.05%` |
+| CV mean accuracy | `99.52%` |
+| CV std deviation | `0.0034` |
 
 The `tapo_signature_v2` feature set uses 30-second time windows and trains on
 steady-state power, quantiles, active-power statistics, on/off transitions, step

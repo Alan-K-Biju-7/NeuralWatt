@@ -176,12 +176,12 @@ Current baseline result:
 | Metric | Value |
 |---|---:|
 | Classes | 6 |
-| Raw rows | 6,082 |
-| Feature windows | 1,433 |
+| Raw rows | 7,911 |
+| Feature windows | 2,092 |
 | Feature set | `tapo_signature_v2` |
-| Test accuracy | 99.30% |
-| CV mean accuracy | 99.44% |
-| CV std deviation | 0.0036 |
+| Test accuracy | 99.05% |
+| CV mean accuracy | 99.52% |
+| CV std deviation | 0.0034 |
 
 Important limitation: this is currently an appliance signature classifier
 trained on smart-plug data. It is not yet a full aggregate NILM disaggregation
