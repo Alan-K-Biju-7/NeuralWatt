@@ -1,0 +1,25 @@
+{
+  "capture_id": "tapo_p110_iron_box_2026-05-27_1846",
+  "appliance_label": "iron",
+  "appliance_name": "Iron Box",
+  "device_model": "Tapo P110",
+  "location": "Hallway",
+  "source": "tapo_p110_screenshot_derived",
+  "image_files": [
+    "/Users/ancybiju/Downloads/WhatsApp Image 2026-05-27 at 20.39.58 (1).jpeg",
+    "/Users/ancybiju/Downloads/WhatsApp Image 2026-05-27 at 20.39.58.jpeg"
+  ],
+  "screenshot_status_time": "18:46",
+  "assumed_capture_date": "2026-05-27",
+  "observed_today_energy_kwh": 0.119,
+  "observed_app_today_energy_display_kwh": 0.12,
+  "observed_today_runtime_h": 0.5,
+  "observed_month_energy_kwh": 0.209,
+  "observed_month_runtime_h": 1.1,
+  "observed_monthly_bill_inr": "<0.01",
+  "observed_current_power": "<1 W",
+  "derived_interval_start": "2026-05-27 18:16:00",
+  "derived_interval_end": "2026-05-27 18:45:00",
+  "derived_total_energy_kwh": 0.119,
+  "derivation_note": "One-minute readings were derived from the Tapo app screenshots, daily chart total, and runtime. This is labelled iron-box data for early NILM experiments, not a raw Tapo API export."
+}

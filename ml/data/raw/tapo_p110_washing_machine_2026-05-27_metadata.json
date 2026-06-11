@@ -1,0 +1,24 @@
+{
+  "capture_id": "tapo_p110_washing_machine_2026-05-27_1849",
+  "appliance_label": "washing_machine",
+  "appliance_name": "Washing Machine",
+  "device_model": "Tapo P110",
+  "location": "Kitchen",
+  "source": "tapo_p110_screenshot_derived",
+  "image_files": [
+    "/Users/ancybiju/Downloads/WhatsApp Image 2026-05-27 at 18.49.20 (1).jpeg",
+    "/Users/ancybiju/Downloads/WhatsApp Image 2026-05-27 at 18.49.20.jpeg"
+  ],
+  "screenshot_status_time": "18:49",
+  "power_chart_timestamp": "18:44 May 27, 2026",
+  "assumed_capture_date": "2026-05-27",
+  "observed_today_energy_kwh": 0.102,
+  "observed_today_runtime_h": 8.0,
+  "observed_current_power": "<1 W",
+  "observed_power_chart_peak_w": 342,
+  "observed_power_chart_view": "Past 24 Hours",
+  "derived_interval_start": "2026-05-27 12:15:00",
+  "derived_interval_end": "2026-05-27 12:44:00",
+  "derived_total_energy_kwh": 0.102,
+  "derivation_note": "One-minute active-cycle readings were derived from Tapo app screenshots, daily energy, and the power chart shape near 12:45. The Tapo runtime display may include plug-on or standby time, so the NILM CSV keeps the active washing-machine signature instead of filling eight hours of standby rows. This is labelled data for early NILM experiments, not a raw Tapo API export."
+}
