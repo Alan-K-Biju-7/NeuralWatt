@@ -13,10 +13,12 @@ from app.schemas.anomaly import (
 from app.services.anomaly_service import (
     get_anomalies,
     get_baseline,
+    get_triggered_alerts,
     format_anomaly_response,
 )
 
 router = APIRouter(prefix="/households", tags=["Anomalies"])
+triggered_alerts_router = APIRouter(prefix="/anomalies", tags=["Anomalies"])
 
 
 @router.get(
@@ -54,3 +56,15 @@ async def get_device_baseline(
     db: AsyncIOMotorDatabase = Depends(get_db),
 ):
     return await get_baseline(db, household_id, device_id, user_id)
+
+
+@triggered_alerts_router.get("/triggered-alerts")
+async def list_triggered_alerts(
+    household_id: str = Query(..., description="Household to read alerts for"),
+    limit: int = Query(20, ge=1, le=100),
+    user_id: str = Depends(get_current_user_id),
+    db: AsyncIOMotorDatabase = Depends(get_db),
+):
+    """Return most recent triggered alerts for a household."""
+    alerts = await get_triggered_alerts(db, household_id, user_id, limit)
+    return {"triggered_alerts": alerts, "count": len(alerts)}
