@@ -45,13 +45,16 @@ function ConfidenceBadge({ value }) {
   );
 }
 
-export default function AppliancesTab({ recentReadings }) {
+export default function AppliancesTab({ recentReadings, readingsLoading = false }) {
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    if (!recentReadings || recentReadings.length === 0) return;
+    if (!recentReadings || recentReadings.length < 3) {
+      setResult(null);
+      return;
+    }
     setLoading(true);
     setError(null);
     nilmAPI
@@ -61,10 +64,12 @@ export default function AppliancesTab({ recentReadings }) {
       .finally(() => setLoading(false));
   }, [recentReadings]);
 
+  const predictions = result?.windows || [];
   const chartData = result
     ? Object.entries(
-        result.predictions.reduce((acc, p) => {
-          const label = LABEL_MAP[p.appliance] || p.appliance;
+        predictions.reduce((acc, p) => {
+          const appliance = p.predicted_appliance;
+          const label = LABEL_MAP[appliance] || appliance;
           acc[label] = (acc[label] || 0) + 1;
           return acc;
         }, {})
@@ -77,14 +82,11 @@ export default function AppliancesTab({ recentReadings }) {
       <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4 text-sm text-yellow-800">
         <span className="font-semibold">Model note:</span> Smart-plug appliance
         signature classifier — not full aggregate disaggregation. Trained on{" "}
-        {result?.metadata?.n_classes ?? "—"} classes with{" "}
-        {result?.metadata?.test_accuracy
-          ? `${(result.metadata.test_accuracy * 100).toFixed(1)}% test accuracy`
-          : "—"}
-        .
+        {result?.classes?.length ?? "—"} classes using feature set{" "}
+        {result?.feature_set_version ?? "—"}.
       </div>
 
-      {loading && (
+      {(readingsLoading || loading) && (
         <div className="text-center text-gray-400 py-12 animate-pulse">
           Running appliance detection…
         </div>
@@ -129,14 +131,14 @@ export default function AppliancesTab({ recentReadings }) {
 
           {/* Per-appliance cards */}
           <div className="space-y-3">
-            {result.predictions.slice(0, 8).map((p, idx) => (
+            {predictions.slice(0, 8).map((p, idx) => (
               <div
                 key={idx}
                 className="bg-white rounded-xl shadow-sm p-4 flex items-center justify-between"
               >
                 <div>
                   <p className="font-medium text-gray-800">
-                    {LABEL_MAP[p.appliance] || p.appliance}
+                    {LABEL_MAP[p.predicted_appliance] || p.predicted_appliance}
                   </p>
                   <p className="text-xs text-gray-400">
                     Window {p.window_index ?? idx + 1}
@@ -149,10 +151,10 @@ export default function AppliancesTab({ recentReadings }) {
         </div>
       )}
 
-      {!loading && !error && chartData.length === 0 && !result && (
+      {!readingsLoading && !loading && !error && chartData.length === 0 && !result && (
         <div className="text-center text-gray-400 py-16">
           <p className="text-4xl mb-3">🔌</p>
-          <p>No readings available for appliance detection yet.</p>
+          <p>Need at least three recent readings for appliance detection.</p>
         </div>
       )}
     </div>

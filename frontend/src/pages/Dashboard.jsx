@@ -1,20 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { householdAPI } from "../lib/api";
+import { householdAPI, readingAPI } from "../lib/api";
 import useAuthStore from "../store/authStore";
 import KPICards from "../components/KPICards";
 import DailyChart from "../components/DailyChart";
 import HourlyChart from "../components/HourlyChart";
 import AnomalyFeed from "../components/AnomalyFeed";
 import LiveWattCard from "../components/LiveWattCard";
+import AppliancesTab from "../components/dashboard/AppliancesTab";
 import {
   Zap, LayoutDashboard, BarChart2,
-  Bell, IndianRupee, LogOut, ChevronRight, Menu, X, Home, RefreshCw
+  Bell, IndianRupee, LogOut, ChevronRight, Menu, X, Home, RefreshCw, Cpu
 } from "lucide-react";
 
 const NAV = [
   { id: "overview",  label: "Overview",  icon: LayoutDashboard },
   { id: "analytics", label: "Analytics", icon: BarChart2 },
+  { id: "appliances", label: "Appliances", icon: Cpu },
   { id: "anomalies", label: "Anomalies", icon: Bell },
   { id: "cost",      label: "KSEB Cost", icon: IndianRupee },
 ];
@@ -78,6 +80,22 @@ export default function Dashboard() {
     if (householdId) refetchDevices();
   };
   const selectedDevice = devices.find((device) => device.id === deviceId);
+  const {
+    data: recentReadings = [],
+    isLoading: readingsLoading,
+  } = useQuery({
+    queryKey: ["appliance-readings", householdId, deviceId],
+    enabled: activeTab === "appliances" && !!householdId && !!deviceId,
+    queryFn: async () => {
+      const { data } = await readingAPI.list(householdId, deviceId, { limit: 120 });
+      return data.readings || [];
+    },
+    refetchInterval: activeTab === "appliances" ? 30000 : false,
+  });
+  const applianceReadings = useMemo(
+    () => recentReadings.slice(0, 60).reverse(),
+    [recentReadings]
+  );
 
   return (
     <div className="min-h-screen bg-[#0b1220] text-slate-100 flex">
@@ -270,6 +288,12 @@ export default function Dashboard() {
                   <HourlyChart householdId={householdId} deviceId={deviceId} days={30} />
                 </div>
               )}
+              {activeTab === "appliances" && (
+                <AppliancesTab
+                  recentReadings={applianceReadings}
+                  readingsLoading={readingsLoading}
+                />
+              )}
               {activeTab === "anomalies" && (
                 <AnomalyFeed householdId={householdId} deviceId={deviceId} limit={50} />
               )}
@@ -284,15 +308,3 @@ export default function Dashboard() {
     </div>
   );
 }
-
-// --- APPLIANCES TAB WIRING (append to existing tab state and JSX) ---
-// 1. Add import at top of file:
-//    import AppliancesTab from "../components/dashboard/AppliancesTab";
-//
-// 2. Add "Appliances" to your tab list:
-//    const TABS = ["Overview", "Daily", "Hourly", "Appliances"];
-//
-// 3. Add this tab panel in your tab content switch:
-//    {activeTab === "Appliances" && (
-//      <AppliancesTab recentReadings={readings.slice(-60)} />
-//    )}
