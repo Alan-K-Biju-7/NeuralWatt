@@ -17,10 +17,7 @@ from app.services.reading_service import (
     get_reading_stats,
     format_reading_response,
 )
-from app.services.anomaly_service import detect_and_store
-import logging
 
-logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/households", tags=["Readings"])
 
 
@@ -44,23 +41,6 @@ async def create_reading(
         payload,
         skip_ownership_check=principal.auth_type == "device_key",
     )
-
-    # Run anomaly detection asynchronously — never block the response
-    try:
-        anomaly = await detect_and_store(
-            db,
-            device_id=device_id,
-            household_id=household_id,
-            reading_id=str(reading._id),
-            watts=reading.watts,
-        )
-        if anomaly:
-            logger.warning(
-                f"Anomaly detected | device={device_id} | "
-                f"{anomaly.severity.value.upper()} | {anomaly.message}"
-            )
-    except Exception as e:
-        logger.error(f"Anomaly detection failed silently: {e}")
 
     return format_reading_response(reading)
 

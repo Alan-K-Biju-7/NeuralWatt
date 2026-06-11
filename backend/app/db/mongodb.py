@@ -84,6 +84,11 @@ async def _create_indexes(db: AsyncIOMotorDatabase) -> None:
         [("severity", 1)],
         name="anomalies_severity",
     )
+    await _ensure_index(
+        db.triggered_alerts,
+        [("household_id", 1), ("timestamp", -1)],
+        name="triggered_alerts_household_time",
+    )
     logger.info("MongoDB indexes created ✅")
 
 

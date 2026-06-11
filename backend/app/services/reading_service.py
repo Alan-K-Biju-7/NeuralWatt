@@ -1,6 +1,5 @@
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List
-from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from fastapi import HTTPException, status
 from app.models.reading import ReadingDocument
@@ -10,7 +9,11 @@ from app.schemas.reading import (
     ReadingStatsResponse,
 )
 from app.services.household_service import get_household_by_id
+from app.services.anomaly_service import detect_and_store, check_and_trigger_alerts
 from app.api import ws
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 async def verify_device_ownership(
@@ -66,7 +69,32 @@ async def ingest_reading(
         source=payload.source,
         timestamp=payload.timestamp or datetime.now(timezone.utc),
     )
-    await db.readings.insert_one(reading.to_dict())
+    reading_dict = reading.to_dict()
+    await db.readings.insert_one(reading_dict)
+
+    try:
+        anomaly = await detect_and_store(
+            db,
+            device_id=device_id,
+            household_id=household_id,
+            reading_id=str(reading._id),
+            watts=reading.power_w,
+        )
+        if anomaly:
+            triggered = await check_and_trigger_alerts(
+                db=db,
+                household_id=str(household_id),
+                reading=reading_dict,
+                anomaly=anomaly,
+            )
+            logger.warning(
+                "Anomaly detected | device=%s | severity=%s | triggered_alerts=%s",
+                device_id,
+                anomaly.severity.value.upper(),
+                len(triggered),
+            )
+    except Exception as e:
+        logger.error(f"Anomaly detection failed silently: {e}")
 
     # Broadcast to all connected WebSocket clients
     await ws.manager.broadcast(household_id, {

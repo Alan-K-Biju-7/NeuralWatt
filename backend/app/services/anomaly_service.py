@@ -1,6 +1,7 @@
 import math
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Tuple
+from bson import ObjectId
 from motor.motor_asyncio import AsyncIOMotorDatabase
 from fastapi import HTTPException, status
 from app.models.anomaly import AnomalyDocument
@@ -13,6 +14,7 @@ logger = logging.getLogger(__name__)
 Z_LOW    = 2.0
 Z_MEDIUM = 3.0
 Z_HIGH   = 4.0
+SEVERITY_RANK = {"low": 1, "medium": 2, "high": 3}
 
 
 def _classify_severity(z_score: float, deviation_pct: float) -> AnomalySeverity:
@@ -103,18 +105,113 @@ async def detect_and_store(
         message=message,
     )
     await db.anomalies.insert_one(anomaly.to_dict())
+    return anomaly
 
-    # Dispatch alerts — import here to avoid circular imports
+
+def _alert_channels(config) -> list[str]:
+    channels = []
+    if config.email_enabled and config.email_address:
+        channels.append("email")
+    if config.webhook_enabled and config.webhook_url:
+        channels.append("webhook")
+    return channels
+
+
+def _serialize_triggered_alert(doc: dict) -> dict:
+    alert = dict(doc)
+    alert["id"] = str(alert.pop("_id"))
+    if "timestamp" in alert and hasattr(alert["timestamp"], "isoformat"):
+        alert["timestamp"] = alert["timestamp"].isoformat()
+    if "reading_timestamp" in alert and hasattr(alert["reading_timestamp"], "isoformat"):
+        alert["reading_timestamp"] = alert["reading_timestamp"].isoformat()
+    return alert
+
+
+async def check_and_trigger_alerts(
+    db: AsyncIOMotorDatabase,
+    household_id: str,
+    reading: dict,
+    anomaly: AnomalyDocument | None,
+) -> list[dict]:
+    """Persist triggered alerts for matching configs and dispatch notifications."""
+    if anomaly is None:
+        return []
+
+    from app.services.alert_config_service import get_configs_for_device
+    from app.services.notification_service import dispatch_alerts
+
+    configs = await get_configs_for_device(db, anomaly.device_id)
+    if not configs:
+        return []
+
+    anomaly_rank = SEVERITY_RANK.get(anomaly.severity.value, 0)
+    matching_configs = []
+    records = []
+    now = datetime.now(timezone.utc)
+
+    for config in configs:
+        threshold_rank = SEVERITY_RANK.get(config.severity_threshold.value, 3)
+        if anomaly_rank < threshold_rank:
+            continue
+
+        channels = _alert_channels(config)
+        if not channels:
+            continue
+
+        matching_configs.append(config)
+        records.append(
+            {
+                "_id": ObjectId(),
+                "household_id": str(household_id),
+                "device_id": anomaly.device_id,
+                "reading_id": anomaly.reading_id,
+                "anomaly_id": str(anomaly._id),
+                "alert_config_id": str(config._id),
+                "severity": anomaly.severity.value,
+                "reason": anomaly.message,
+                "message": anomaly.message,
+                "watts": anomaly.watts,
+                "expected_watts": anomaly.expected_watts,
+                "deviation_pct": anomaly.deviation_pct,
+                "channels": channels,
+                "timestamp": now,
+                "reading_timestamp": reading.get("timestamp"),
+            }
+        )
+
+    if not records:
+        return []
+
+    await db.triggered_alerts.insert_many(records)
+
     try:
-        from app.services.alert_config_service import get_configs_for_device
-        from app.services.notification_service import dispatch_alerts
-        configs = await get_configs_for_device(db, device_id)
-        if configs:
-            await dispatch_alerts(anomaly, configs)
+        await dispatch_alerts(anomaly, matching_configs)
     except Exception as e:
         logger.error(f"Alert dispatch failed silently: {e}")
 
-    return anomaly
+    return [_serialize_triggered_alert(record) for record in records]
+
+
+async def get_triggered_alerts(
+    db: AsyncIOMotorDatabase,
+    household_id: str,
+    user_id: str,
+    limit: int = 20,
+) -> list[dict]:
+    household = await get_household_by_id(db, household_id)
+    if not household:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Household not found")
+    if household.owner_id != user_id:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+
+    cursor = (
+        db.triggered_alerts
+        .find({"household_id": household_id})
+        .sort("timestamp", -1)
+        .limit(limit)
+    )
+    docs = await cursor.to_list(length=limit)
+    return [_serialize_triggered_alert(doc) for doc in docs]
 
 
 async def get_anomalies(
