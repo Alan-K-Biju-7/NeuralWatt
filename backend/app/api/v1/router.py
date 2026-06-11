@@ -4,9 +4,11 @@ from app.api.v1.endpoints import (
     analytics,
     anomalies,
     auth,
+    forecast,
     households,
     nilm,
     readings,
+    recommendations,
 )
 
 api_router = APIRouter(prefix="/api/v1")
@@ -18,3 +20,5 @@ api_router.include_router(anomalies.triggered_alerts_router)
 api_router.include_router(alert_configs.router)
 api_router.include_router(analytics.router)
 api_router.include_router(nilm.router)
+api_router.include_router(forecast.router)
+api_router.include_router(recommendations.router)

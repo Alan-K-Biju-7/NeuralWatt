@@ -25,9 +25,11 @@ pandas
 numpy
 scikit-learn
 xgboost
+prophet>=1.1.5
+shap>=0.45.0
 
 # Date & time
-python-dateutil==2.9.0
+python-dateutil==2.9.0.post0
 
 # Testing
 pytest==8.3.4
