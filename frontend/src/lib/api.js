@@ -85,6 +85,16 @@ export const nilmAPI = {
       readings,
       window_size_s: windowSizeS,
     }).then((res) => res.data),
+  modelCard: () => api.get("/nilm/model-card").then((res) => res.data),
+};
+
+export const forecastAPI = {
+  get: (hid, days = 30) =>
+    api.get(`/forecast/${hid}`, { params: { days } }).then((res) => res.data),
+};
+
+export const recommendationAPI = {
+  get: (hid) => api.get(`/recommendations/${hid}`).then((res) => res.data),
 };
 
 export default api;

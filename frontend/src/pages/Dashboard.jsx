@@ -8,17 +8,24 @@ import HourlyChart from "../components/HourlyChart";
 import AnomalyFeed from "../components/AnomalyFeed";
 import LiveWattCard from "../components/LiveWattCard";
 import AppliancesTab from "../components/dashboard/AppliancesTab";
+import ForecastChart from "../components/dashboard/ForecastChart";
+import RecommendationsPanel from "../components/dashboard/RecommendationsPanel";
+import Settings from "../components/dashboard/Settings";
 import {
   Zap, LayoutDashboard, BarChart2,
-  Bell, IndianRupee, LogOut, ChevronRight, Menu, X, Home, RefreshCw, Cpu
+  Bell, IndianRupee, LogOut, ChevronRight, Menu, X, Home, RefreshCw, Cpu,
+  TrendingUp, Lightbulb, Settings as SettingsIcon
 } from "lucide-react";
 
 const NAV = [
   { id: "overview",  label: "Overview",  icon: LayoutDashboard },
   { id: "analytics", label: "Analytics", icon: BarChart2 },
   { id: "appliances", label: "Appliances", icon: Cpu },
+  { id: "forecast",  label: "Forecast",  icon: TrendingUp },
+  { id: "recommendations", label: "Recommendations", icon: Lightbulb },
   { id: "anomalies", label: "Anomalies", icon: Bell },
   { id: "cost",      label: "KSEB Cost", icon: IndianRupee },
+  { id: "settings",  label: "Settings",  icon: SettingsIcon },
 ];
 
 export default function Dashboard() {
@@ -294,11 +301,20 @@ export default function Dashboard() {
                   readingsLoading={readingsLoading}
                 />
               )}
+              {activeTab === "forecast" && (
+                <ForecastChart householdId={householdId} />
+              )}
+              {activeTab === "recommendations" && (
+                <RecommendationsPanel householdId={householdId} />
+              )}
               {activeTab === "anomalies" && (
                 <AnomalyFeed householdId={householdId} deviceId={deviceId} limit={50} />
               )}
               {activeTab === "cost" && (
                 <KPICards householdId={householdId} deviceId={deviceId} costOnly />
+              )}
+              {activeTab === "settings" && (
+                <Settings householdId={householdId} deviceId={deviceId} />
               )}
             </>
           )}
