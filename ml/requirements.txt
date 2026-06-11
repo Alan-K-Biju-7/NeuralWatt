@@ -2,3 +2,5 @@ pandas
 numpy
 scikit-learn
 xgboost
+prophet>=1.1.5
+shap>=0.45.0
