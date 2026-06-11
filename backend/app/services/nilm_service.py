@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 import sys
 
@@ -15,6 +16,10 @@ def _resolve_model_path() -> Path:
     if not path.is_absolute():
         path = REPO_ROOT / path
     return path
+
+
+def _resolve_metadata_path() -> Path:
+    return REPO_ROOT / "ml" / "models" / "nilm_v1_metadata.json"
 
 
 def _ensure_repo_on_path() -> None:
@@ -105,3 +110,33 @@ def predict_nilm_windows(payload: NILMPredictRequest) -> NILMPredictResponse:
             for prediction in result["predictions"]
         ],
     )
+
+
+def get_model_card() -> dict:
+    metadata_path = _resolve_metadata_path()
+    if not metadata_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="NILM metadata file not found. Train the model first.",
+        )
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    return {
+        "version": "nilm_v1",
+        "model_type": "smart-plug appliance signature classifier",
+        "feature_set": metadata.get("feature_set_version"),
+        "window_size_s": metadata.get("window_size_s"),
+        "n_classes": metadata.get("n_classes"),
+        "classes": metadata.get("classes", []),
+        "train_samples": metadata.get("train_samples"),
+        "test_samples": metadata.get("test_samples"),
+        "total_feature_windows": metadata.get("total_feature_windows"),
+        "test_accuracy": metadata.get("test_accuracy"),
+        "cv_mean_accuracy": metadata.get("cv_mean_accuracy"),
+        "cv_std_accuracy": metadata.get("cv_std_accuracy"),
+        "top_feature_importance": metadata.get("top_feature_importance", [])[:8],
+        "limitation": metadata.get(
+            "notes",
+            "This model classifies smart-plug appliance signatures and is not yet aggregate household disaggregation.",
+        ),
+    }

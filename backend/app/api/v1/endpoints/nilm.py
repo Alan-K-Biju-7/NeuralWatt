@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.security import get_current_user_id
 from app.schemas.nilm import NILMPredictRequest, NILMPredictResponse
-from app.services.nilm_service import predict_nilm_windows
+from app.services.nilm_service import get_model_card, predict_nilm_windows
 
 
 router = APIRouter(prefix="/nilm", tags=["NILM"])
@@ -15,3 +15,9 @@ async def predict_nilm(
 ):
     """Predict appliance windows from submitted energy readings."""
     return predict_nilm_windows(payload)
+
+
+@router.get("/model-card")
+async def nilm_model_card(user_id: str = Depends(get_current_user_id)):
+    """Return the trained NILM model metadata used by the dashboard."""
+    return get_model_card()
