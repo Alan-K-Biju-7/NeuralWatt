@@ -284,3 +284,15 @@ export default function Dashboard() {
     </div>
   );
 }
+
+// --- APPLIANCES TAB WIRING (append to existing tab state and JSX) ---
+// 1. Add import at top of file:
+//    import AppliancesTab from "../components/dashboard/AppliancesTab";
+//
+// 2. Add "Appliances" to your tab list:
+//    const TABS = ["Overview", "Daily", "Hourly", "Appliances"];
+//
+// 3. Add this tab panel in your tab content switch:
+//    {activeTab === "Appliances" && (
+//      <AppliancesTab recentReadings={readings.slice(-60)} />
+//    )}
