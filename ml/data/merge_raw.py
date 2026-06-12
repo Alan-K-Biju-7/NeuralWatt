@@ -27,6 +27,7 @@ FILES = {
     "abel_plug2_washing_machine_normal_2026-06-08_S005.csv": "washing_machine",
     "abel_plug2_washing_machine_normal_2026-06-09_S006.csv": "washing_machine",
     "abel_plug2_washing_machine_superquick_2026-06-06_S004.csv": "washing_machine",
+    "abel_plug2_washing_machine_superquick_2026-06-11_S007.csv": "washing_machine",
     "alaina_plug4_kettle_boil_2026-06-02_S001.csv": "electric_kettle",
     "alaina_plug4_kettle_boil_2026-06-02_S002.csv": "electric_kettle",
     "alaina_plug4_kettle_boil_2026-06-02_S003.csv": "electric_kettle",
@@ -37,6 +38,7 @@ FILES = {
     "alaina_plug4_tablefan_speed2_2026-06-10_S008.csv": "fan",
     "alaina_plug4_tablefan_speed3_2026-06-10_S009.csv": "fan",
     "anllia_plug1_iron_long_2026-06-03_S002.csv": "iron",
+    "anllia_plug1_fridge_long_2026-06-11_S001.csv": "fridge",
     "anllia_plug1_mixer_final_2026-06-02_S003.csv": "mixer_grinder",
     "anllia_plug1_mixer_long_2026-06-02_S004.csv": "mixer_grinder",
 }

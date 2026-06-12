@@ -1,7 +1,7 @@
 {
-  "train_samples": 1673,
-  "test_samples": 419,
-  "total_feature_windows": 2092,
+  "train_samples": 2085,
+  "test_samples": 522,
+  "total_feature_windows": 2607,
   "n_classes": 6,
   "classes": [
     "electric_kettle",
@@ -12,15 +12,15 @@
     "washing_machine"
   ],
   "class_distribution": {
-    "washing_machine": 1027,
-    "fridge": 389,
+    "washing_machine": 1110,
+    "fridge": 821,
     "fan": 374,
     "mixer_grinder": 142,
     "iron": 121,
     "electric_kettle": 39
   },
   "train_accuracy": 1.0,
-  "test_accuracy": 0.9904534606205251,
+  "test_accuracy": 0.9904214559386973,
   "has_test_split": true,
   "feature_set_version": "tapo_signature_v2",
   "feature_cols": [
@@ -55,52 +55,52 @@
   ],
   "top_feature_importance": [
     {
-      "feature": "median_power",
-      "importance": 0.15831942856311798
-    },
-    {
-      "feature": "p10_power",
-      "importance": 0.12406851351261139
-    },
-    {
-      "feature": "power_delta",
-      "importance": 0.11472748219966888
-    },
-    {
-      "feature": "std_power",
-      "importance": 0.1043001189827919
+      "feature": "p75_power",
+      "importance": 0.15061835944652557
     },
     {
       "feature": "active_max_power",
-      "importance": 0.10122344642877579
+      "importance": 0.10940612852573395
     },
     {
       "feature": "p25_power",
-      "importance": 0.07522112131118774
+      "importance": 0.0991475060582161
     },
     {
-      "feature": "p75_power",
-      "importance": 0.07182627171278
+      "feature": "power_delta",
+      "importance": 0.09652413427829742
     },
     {
-      "feature": "min_power",
-      "importance": 0.03267529979348183
+      "feature": "p10_power",
+      "importance": 0.09046527743339539
+    },
+    {
+      "feature": "median_power",
+      "importance": 0.07144211232662201
     },
     {
       "feature": "on_fraction",
-      "importance": 0.030224133282899857
-    },
-    {
-      "feature": "mean_voltage",
-      "importance": 0.029447078704833984
-    },
-    {
-      "feature": "max_current",
-      "importance": 0.024564098566770554
+      "importance": 0.06781080365180969
     },
     {
       "feature": "max_power",
-      "importance": 0.02301650494337082
+      "importance": 0.06073454022407532
+    },
+    {
+      "feature": "mean_voltage",
+      "importance": 0.03877592831850052
+    },
+    {
+      "feature": "min_power",
+      "importance": 0.03850003704428673
+    },
+    {
+      "feature": "max_current",
+      "importance": 0.03664330020546913
+    },
+    {
+      "feature": "p90_power",
+      "importance": 0.01912735216319561
     }
   ],
   "xgb_params": {
@@ -117,14 +117,14 @@
   },
   "window_size_s": 30,
   "notes": "This is a smart-plug appliance signature classifier. It is not yet aggregate household NILM disaggregation.",
-  "cv_mean_accuracy": 0.9952164529353323,
-  "cv_std_accuracy": 0.0033840941755533442,
+  "cv_mean_accuracy": 0.995014744706981,
+  "cv_std_accuracy": 0.002597729830781121,
   "cv_fold_scores": [
-    1.0,
-    0.9976133651551312,
-    0.9952153110047847,
-    0.9904306220095693,
-    0.992822966507177
+    0.9961685823754789,
+    0.9904214559386973,
+    0.9961612284069098,
+    0.9980806142034548,
+    0.9942418426103646
   ],
   "cv_folds": 5
 }
