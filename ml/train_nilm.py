@@ -47,6 +47,21 @@ XGB_PARAMS = {
 }
 
 FEATURE_COLS = FEATURE_COLUMNS
+MIN_ACTIVE_WINDOW_POWER_W = 10.0
+
+
+def filter_informative_windows(df: pd.DataFrame) -> tuple[pd.DataFrame, int]:
+    """
+    Drop off-only windows before appliance classification training.
+
+    A completely idle window is not a reliable appliance signature unless the
+    dataset has an explicit "off/unknown" class, which this classifier does not.
+    """
+    if "max_power" not in df.columns:
+        return df, 0
+    mask = pd.to_numeric(df["max_power"], errors="coerce").fillna(0.0) > MIN_ACTIVE_WINDOW_POWER_W
+    filtered = df.loc[mask].reset_index(drop=True)
+    return filtered, int((~mask).sum())
 
 
 def load_features(path: str) -> pd.DataFrame:
@@ -178,11 +193,27 @@ def main():
     elif args.data:
         print(f"Extracting features from {args.data}")
         df = load_and_extract(args.data, window_size=args.window)
+        raw_window_count = len(df)
+        df, filtered_inactive_windows = filter_informative_windows(df)
         out = DATA_DIR / "features_extracted.csv"
         df.to_csv(out, index=False)
         print(f"Features saved -> {out}")
     else:
         parser.error("Provide --data or --features")
+
+    if args.features:
+        raw_window_count = len(df)
+        df, filtered_inactive_windows = filter_informative_windows(df)
+
+    if filtered_inactive_windows:
+        print(
+            "Filtered inactive windows: "
+            f"{filtered_inactive_windows} of {raw_window_count} "
+            f"(max_power <= {MIN_ACTIVE_WINDOW_POWER_W} W)"
+        )
+
+    if df.empty:
+        raise SystemExit("No active feature windows remain after filtering.")
 
     print(f"\nDataset: {len(df)} windows | {df['appliance_label'].nunique()} classes")
     print(f"Class distribution:\n{df['appliance_label'].value_counts()}\n")
@@ -226,6 +257,9 @@ def main():
         "test_accuracy": test_acc,
         "has_test_split": has_test_split,
         "feature_set_version": "tapo_signature_v2",
+        "raw_feature_windows_before_filter": int(raw_window_count),
+        "filtered_inactive_windows": int(filtered_inactive_windows),
+        "min_active_window_power_w": MIN_ACTIVE_WINDOW_POWER_W,
         "feature_cols": FEATURE_COLS,
         "top_feature_importance": get_feature_importance(model, FEATURE_COLS),
         "xgb_params": XGB_PARAMS,

@@ -1,5 +1,6 @@
 file,rows,appliance_label,session_id,mode,sample_interval_sec,min_power_w,mean_power_w,max_power_w,nonzero_rows,max_gap_s,missing_gap_count,estimated_missing_rows,outlier_rows
 abel_plug2_fridge_normal_2026-06-02_S001.csv,1087,fridge,f371cfb9,normal,5.0,66.766,70.47891904323828,78.435,1087,12.038381,10,10,0
+abel_plug2_fridge_normal_2026-06-14_S008.csv,8121,fridge,00d2d9d3,normal,5.0,1.737,77.37580088659031,260.168,7814,23.564891,35,56,0
 abel_plug2_mixie_normal_2026-06-03_S003.csv,369,mixer_grinder,61b1ec27,normal,1.0,0.0,249.7045528455285,847.127,140,12.365569,222,268,0
 abel_plug2_washing_machine_normal_2026-06-03_S002.csv,1392,washing_machine,adeac0d9,normal_wash,5.0,1.298,34.49912643678161,403.865,375,9.456244,47,47,0
 abel_plug2_washing_machine_normal_2026-06-08_S005.csv,548,washing_machine,147a8794,normal_wash,5.0,1.812,89.96585766423357,423.145,394,53.638562,6,17,0
@@ -9,6 +10,9 @@ abel_plug2_washing_machine_superquick_2026-06-11_S007.csv,229,washing_machine,68
 alaina_plug4_kettle_boil_2026-06-02_S001.csv,83,electric_kettle,S001,boil,2.0,0.0,739.9723975903614,1415.157,44,2.362698,0,0,0
 alaina_plug4_kettle_boil_2026-06-02_S002.csv,87,electric_kettle,S002,boil,2.0,0.0,958.677356321839,1382.987,61,2.390971,0,0,0
 alaina_plug4_kettle_boil_2026-06-02_S003.csv,84,electric_kettle,S003,boil,2.0,0.0,1081.2144523809523,1383.848,67,2.418971,0,0,0
+alaina_plug4_kettle_boil_125ml_2026-06-12_S010.csv,38,electric_kettle,S010,boil_125ml,2.0,0.0,658.6466578947369,1500.164,17,2.383541,0,0,0
+alaina_plug4_kettle_boil_250ml_2026-06-12_S011.csv,52,electric_kettle,S011,boil_250ml,2.0,0.0,872.6543076923076,1486.677,31,2.336777,0,0,0
+alaina_plug4_kettle_boil_375ml_2026-06-12_S012.csv,64,electric_kettle,S012,boil_375ml,2.0,0.0,1023.4043125000001,1482.523,45,2.369016,0,0,0
 alaina_plug4_tablefan_speed1_2026-06-03_S004.csv,181,fan,S004,speed_1,5.0,0.0,69.4008674033149,92.672,168,5.485384,0,0,0
 alaina_plug4_tablefan_speed2_2026-06-03_S005.csv,182,fan,S005,speed_2,5.0,0.0,65.46541758241757,95.931,166,5.419612,0,0,0
 alaina_plug4_tablefan_speed3_2026-06-03_S006.csv,183,fan,S006,speed_3,5.0,0.0,64.88719672131147,80.032,170,6.246078,0,0,0
@@ -16,6 +20,8 @@ alaina_plug4_tablefan_speed1_2026-06-10_S007.csv,169,fan,S007,speed_1,5.0,0.0,10
 alaina_plug4_tablefan_speed2_2026-06-10_S008.csv,178,fan,S008,speed_2,5.0,0.0,102.13933146067416,113.407,168,5.718446,0,0,0
 alaina_plug4_tablefan_speed3_2026-06-10_S009.csv,176,fan,S009,speed_3,5.0,0.0,112.76655113636365,126.697,169,7.77964,1,1,0
 anllia_plug1_iron_long_2026-06-03_S002.csv,1328,iron,262d5eb8,multi_cycle,1.0,0.0,120.74356626506024,1422.574,115,3.977012,107,111,0
+anllia_plug1_iron_long_2026-06-12_S003.csv,1011,iron,ebce04ed,multi_cycle,1.0,0.0,132.64308902077153,1350.367,102,69.35164,73,185,0
+anllia_plug1_iron_long_2026-06-12_S004.csv,792,iron,68ce0cc0,multi_cycle,1.0,0.0,138.32987121212122,1320.556,85,7.71884,788,924,0
 anllia_plug1_fridge_long_2026-06-11_S001.csv,4505,fridge,a7c73018,multi_cycle,1.0,1.416,90.83612985571587,106.379,4282,468.733977,357,1565,0
 anllia_plug1_mixer_final_2026-06-02_S003.csv,107,mixer_grinder,5bd62096,multi_cycle,1.0,2.146,95.44220560747664,323.724,46,9.497833,17,36,0
 anllia_plug1_mixer_long_2026-06-02_S004.csv,999,mixer_grinder,017895c5,multi_cycle,1.0,1.381,120.63141641641641,468.217,557,2.882694,24,28,0
