@@ -3,7 +3,7 @@ from datetime import datetime, timedelta, timezone
 import pandas as pd
 
 from app.services.forecast_service import hourly_energy_frame
-from app.services.nilm_service import get_model_card
+from app.services.nilm_service import get_model_card, get_shap_importance
 from app.services.recommendation_service import evaluate_rules, summarize_readings
 
 
@@ -84,3 +84,12 @@ def test_nilm_model_card_reads_current_metadata():
     assert card["version"] == "nilm_v1"
     assert card["n_classes"] >= 5
     assert "washing_machine" in card["classes"]
+
+
+def test_nilm_shap_importance_returns_ranked_features():
+    importance = get_shap_importance()
+
+    assert importance["source"] in {"shap", "model_feature_importance"}
+    assert importance["feature_importance"]
+    assert "feature" in importance["feature_importance"][0]
+    assert "mean_abs_shap" in importance["feature_importance"][0]

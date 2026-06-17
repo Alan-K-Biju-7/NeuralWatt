@@ -1,6 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Bell, CheckCircle2, Cpu, Mail, Save, Settings as SettingsIcon, Webhook } from "lucide-react";
+import {
+  BarChart3,
+  Bell,
+  CheckCircle2,
+  Cpu,
+  Mail,
+  Save,
+  Settings as SettingsIcon,
+  Webhook,
+} from "lucide-react";
 import { alertAPI, nilmAPI } from "../../lib/api";
 
 const DEFAULT_FORM = {
@@ -20,6 +29,50 @@ function Metric({ label, value }) {
   );
 }
 
+const importanceScore = (item) => item.mean_abs_shap ?? item.importance ?? 0;
+
+function FeatureImportanceBars({ isLoading, rows }) {
+  if (isLoading && !rows.length) {
+    return <div className="h-36 animate-pulse rounded-lg bg-slate-800" />;
+  }
+
+  if (!rows.length) {
+    return (
+      <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-500">
+        Feature importance is not available yet.
+      </div>
+    );
+  }
+
+  const maxScore = Math.max(...rows.map(importanceScore), 0) || 1;
+
+  return (
+    <div className="space-y-2">
+      {rows.slice(0, 8).map((item) => {
+        const score = importanceScore(item);
+        const width = Math.max(8, Math.min(100, Math.round((score / maxScore) * 100)));
+
+        return (
+          <div key={item.feature}>
+            <div className="mb-1 flex items-center justify-between gap-3 text-xs">
+              <span className="truncate text-slate-400">{item.feature}</span>
+              <span className="shrink-0 font-medium text-slate-300">
+                {score.toFixed(4)}
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-slate-800">
+              <div
+                className="h-full rounded-full bg-sky-400"
+                style={{ width: `${width}%` }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function Settings({ householdId, deviceId }) {
   const queryClient = useQueryClient();
   const [form, setForm] = useState(DEFAULT_FORM);
@@ -28,6 +81,12 @@ export default function Settings({ householdId, deviceId }) {
   const { data: modelCard, isLoading: modelLoading } = useQuery({
     queryKey: ["nilm-model-card"],
     queryFn: () => nilmAPI.modelCard(),
+  });
+
+  const { data: shapImportance, isLoading: shapLoading } = useQuery({
+    queryKey: ["nilm-shap-importance"],
+    queryFn: () => nilmAPI.shapImportance(),
+    retry: false,
   });
 
   const { data: alertConfig, isLoading: configLoading } = useQuery({
@@ -87,6 +146,16 @@ export default function Settings({ householdId, deviceId }) {
   const updateField = (field, value) => {
     setForm((current) => ({ ...current, [field]: value }));
   };
+
+  const featureImportance = useMemo(() => {
+    if (shapImportance?.feature_importance?.length) {
+      return shapImportance.feature_importance;
+    }
+    return modelCard?.top_feature_importance || [];
+  }, [modelCard?.top_feature_importance, shapImportance?.feature_importance]);
+
+  const importanceSource =
+    shapImportance?.source === "shap" ? "SHAP" : "Model fallback";
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_1.1fr]">
@@ -260,26 +329,22 @@ export default function Settings({ householdId, deviceId }) {
             </div>
 
             <div>
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
-                Top model features
-              </p>
-              <div className="space-y-2">
-                {modelCard.top_feature_importance?.slice(0, 5).map((item) => (
-                  <div key={item.feature} className="flex items-center gap-3">
-                    <span className="w-36 shrink-0 truncate text-xs text-slate-400">
-                      {item.feature}
-                    </span>
-                    <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
-                      <div
-                        className="h-full rounded-full bg-teal-400"
-                        style={{
-                          width: `${Math.max(8, Math.min(100, item.importance * 600))}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <BarChart3 className="h-3.5 w-3.5 text-sky-300" />
+                  Feature Importance (SHAP)
+                </p>
+                <span className="rounded-full border border-slate-700 bg-slate-800 px-2 py-0.5 text-[11px] font-semibold text-slate-300">
+                  {importanceSource}
+                </span>
               </div>
+              <FeatureImportanceBars
+                isLoading={shapLoading}
+                rows={featureImportance}
+              />
+              {shapImportance?.message && (
+                <p className="mt-2 text-xs text-slate-500">{shapImportance.message}</p>
+              )}
             </div>
 
             <p className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-400">

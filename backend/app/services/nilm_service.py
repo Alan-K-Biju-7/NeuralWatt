@@ -22,6 +22,10 @@ def _resolve_metadata_path() -> Path:
     return REPO_ROOT / "ml" / "models" / "nilm_v1_metadata.json"
 
 
+def _resolve_shap_path() -> Path:
+    return REPO_ROOT / "ml" / "results" / "shap_importance.json"
+
+
 def _ensure_repo_on_path() -> None:
     repo_path = str(REPO_ROOT)
     if repo_path not in sys.path:
@@ -138,5 +142,54 @@ def get_model_card() -> dict:
         "limitation": metadata.get(
             "notes",
             "This model classifies smart-plug appliance signatures and is not yet aggregate household disaggregation.",
+        ),
+    }
+
+
+def _normalize_importance_rows(rows: list[dict], score_key: str) -> list[dict]:
+    normalized = []
+    for row in rows:
+        feature = row.get("feature")
+        if not feature:
+            continue
+        score = row.get(score_key, row.get("importance", 0.0))
+        try:
+            score = float(score)
+        except (TypeError, ValueError):
+            score = 0.0
+        normalized.append({"feature": feature, "mean_abs_shap": score})
+    return normalized
+
+
+def get_shap_importance() -> dict:
+    shap_path = _resolve_shap_path()
+    if shap_path.exists():
+        payload = json.loads(shap_path.read_text(encoding="utf-8"))
+        return {
+            "source": "shap",
+            "model": payload.get("model"),
+            "features": payload.get("features"),
+            "sample_size": payload.get("sample_size"),
+            "feature_importance": _normalize_importance_rows(
+                payload.get("feature_importance", []),
+                "mean_abs_shap",
+            ),
+        }
+
+    metadata_path = _resolve_metadata_path()
+    if not metadata_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="NILM metadata file not found. Train the model first.",
+        )
+
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    return {
+        "source": "model_feature_importance",
+        "sample_size": metadata.get("total_feature_windows"),
+        "message": "SHAP importance artifact not found. Run ml/explain.py to generate ml/results/shap_importance.json.",
+        "feature_importance": _normalize_importance_rows(
+            metadata.get("top_feature_importance", []),
+            "importance",
         ),
     }

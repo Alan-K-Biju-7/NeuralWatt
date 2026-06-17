@@ -86,6 +86,7 @@ export const nilmAPI = {
       window_size_s: windowSizeS,
     }).then((res) => res.data),
   modelCard: () => api.get("/nilm/model-card").then((res) => res.data),
+  shapImportance: () => api.get("/nilm/shap").then((res) => res.data),
 };
 
 export const forecastAPI = {
