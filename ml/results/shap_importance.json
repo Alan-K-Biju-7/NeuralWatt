@@ -1,0 +1,119 @@
+{
+  "model": "ml/models/nilm_v1.pkl",
+  "features": "ml/data/features_extracted.csv",
+  "sample_size": 500,
+  "feature_importance": [
+    {
+      "feature": "max_current",
+      "mean_abs_shap": 1.5917353630065918
+    },
+    {
+      "feature": "power_delta",
+      "mean_abs_shap": 0.7176627516746521
+    },
+    {
+      "feature": "mean_abs_step",
+      "mean_abs_shap": 0.5014094710350037
+    },
+    {
+      "feature": "active_mean_power",
+      "mean_abs_shap": 0.4263658821582794
+    },
+    {
+      "feature": "mean_current",
+      "mean_abs_shap": 0.4025534689426422
+    },
+    {
+      "feature": "mean_voltage",
+      "mean_abs_shap": 0.2768751382827759
+    },
+    {
+      "feature": "max_step_down",
+      "mean_abs_shap": 0.22373373806476593
+    },
+    {
+      "feature": "min_power",
+      "mean_abs_shap": 0.19329024851322174
+    },
+    {
+      "feature": "max_power",
+      "mean_abs_shap": 0.19252343475818634
+    },
+    {
+      "feature": "std_voltage",
+      "mean_abs_shap": 0.1879185438156128
+    },
+    {
+      "feature": "std_power",
+      "mean_abs_shap": 0.176995649933815
+    },
+    {
+      "feature": "p90_power",
+      "mean_abs_shap": 0.10901132225990295
+    },
+    {
+      "feature": "p75_power",
+      "mean_abs_shap": 0.08066199719905853
+    },
+    {
+      "feature": "max_step_up",
+      "mean_abs_shap": 0.054416876286268234
+    },
+    {
+      "feature": "median_power",
+      "mean_abs_shap": 0.04008748009800911
+    },
+    {
+      "feature": "p25_power",
+      "mean_abs_shap": 0.03710909187793732
+    },
+    {
+      "feature": "on_fraction",
+      "mean_abs_shap": 0.03130248561501503
+    },
+    {
+      "feature": "mean_power",
+      "mean_abs_shap": 0.026797641068696976
+    },
+    {
+      "feature": "energy_kwh_est",
+      "mean_abs_shap": 0.02452700026333332
+    },
+    {
+      "feature": "p10_power",
+      "mean_abs_shap": 0.02024628408253193
+    },
+    {
+      "feature": "rise_time_s",
+      "mean_abs_shap": 0.02017676830291748
+    },
+    {
+      "feature": "steady_state_w",
+      "mean_abs_shap": 0.018305769190192223
+    },
+    {
+      "feature": "active_max_power",
+      "mean_abs_shap": 0.014993526041507721
+    },
+    {
+      "feature": "very_high_power_fraction",
+      "mean_abs_shap": 0.010301202535629272
+    },
+    {
+      "feature": "zero_fraction",
+      "mean_abs_shap": 0.007757477927953005
+    },
+    {
+      "feature": "is_cyclic",
+      "mean_abs_shap": 0.006457886192947626
+    },
+    {
+      "feature": "transition_count",
+      "mean_abs_shap": 0.0032736926805227995
+    },
+    {
+      "feature": "high_power_fraction",
+      "mean_abs_shap": 0.0008656571735627949
+    }
+  ]
+}
