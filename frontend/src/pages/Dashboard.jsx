@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "react-router-dom";
 import { householdAPI, readingAPI } from "../lib/api";
 import useAuthStore from "../store/authStore";
 import KPICards from "../components/KPICards";
@@ -28,9 +29,9 @@ const NAV = [
   { id: "settings",  label: "Settings",  icon: SettingsIcon },
 ];
 
-export default function Dashboard() {
+export default function Dashboard({ initialTab = "overview" }) {
   const { user, fetchUser, logout } = useAuthStore();
-  const [activeTab, setActiveTab]   = useState("overview");
+  const [activeTab, setActiveTab]   = useState(initialTab);
   const [deviceId,  setDeviceId]    = useState(null);
   const [householdId, setHouseholdId] = useState(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -228,6 +229,12 @@ export default function Dashboard() {
             </p>
           </div>
           <div className="ml-auto hidden md:flex items-center gap-3">
+            <Link
+              to="/settings"
+              className="rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-300 transition-colors hover:border-teal-500/40 hover:text-teal-200"
+            >
+              Settings
+            </Link>
             <div className="flex items-center gap-2 rounded-lg border border-slate-800 bg-slate-900/70 px-3 py-2 text-sm text-slate-300">
               <Home className="h-4 w-4 text-teal-300" />
               <span className="max-w-48 truncate">{household?.name || "Home"}</span>
