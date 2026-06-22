@@ -26,6 +26,10 @@ def _resolve_shap_path() -> Path:
     return REPO_ROOT / "ml" / "results" / "shap_importance.json"
 
 
+def _resolve_stationarity_path() -> Path:
+    return REPO_ROOT / "ml" / "results" / "stationarity_report.json"
+
+
 def _ensure_repo_on_path() -> None:
     repo_path = str(REPO_ROOT)
     if repo_path not in sys.path:
@@ -193,3 +197,17 @@ def get_shap_importance() -> dict:
             "importance",
         ),
     }
+
+
+def get_data_validation_report() -> dict:
+    report_path = _resolve_stationarity_path()
+    if not report_path.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=(
+                "Stationarity report not found. Run: "
+                "python ml/validate_data.py --data ml/data/appliance_data_real.csv "
+                "--timestamp-column timestamp --power-column power_w --resample h"
+            ),
+        )
+    return json.loads(report_path.read_text(encoding="utf-8"))

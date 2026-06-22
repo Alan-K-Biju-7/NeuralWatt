@@ -3,6 +3,7 @@ from fastapi import APIRouter, Depends
 from app.core.security import get_current_user_id
 from app.schemas.nilm import NILMPredictRequest, NILMPredictResponse
 from app.services.nilm_service import (
+    get_data_validation_report,
     get_model_card,
     get_shap_importance,
     predict_nilm_windows,
@@ -31,3 +32,9 @@ async def nilm_model_card(user_id: str = Depends(get_current_user_id)):
 async def nilm_shap_importance(user_id: str = Depends(get_current_user_id)):
     """Return SHAP feature importance, or model importance until SHAP is generated."""
     return get_shap_importance()
+
+
+@router.get("/data-validation")
+async def nilm_data_validation(user_id: str = Depends(get_current_user_id)):
+    """Return the latest ADF stationarity validation report."""
+    return get_data_validation_report()

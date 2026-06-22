@@ -1,0 +1,21 @@
+{
+  "series_name": "power_w",
+  "n_observations": 280,
+  "adf_statistic": -2.291123,
+  "p_value": 0.1748471,
+  "num_lags_used": 15,
+  "icbest": -456.474306,
+  "critical_values": {
+    "1%": -3.453922,
+    "5%": -2.871918,
+    "10%": -2.5723
+  },
+  "is_stationary": false,
+  "recommendation": "Series is non-stationary at p >= 0.05. Consider first-order differencing before forecasting.",
+  "data_path": "ml/data/appliance_data_real.csv",
+  "series_points": 296,
+  "timestamp_column": "timestamp",
+  "source_column": "power_w",
+  "resample": "h",
+  "series_kind": "estimated_energy_from_power_h_sum"
+}

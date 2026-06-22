@@ -86,3 +86,15 @@ class TestNilmModelCard:
 
         assert response.status_code == 200, response.text
         assert "feature_importance" in response.json()
+
+    def test_data_validation_endpoint_exists(self, client, auth_headers):
+        response = client.get("/api/v1/nilm/data-validation", headers=auth_headers)
+
+        assert response.status_code in (200, 404), response.text
+        if response.status_code == 200:
+            assert "adf_statistic" in response.json()
+
+    def test_data_validation_requires_auth(self, client):
+        response = client.get("/api/v1/nilm/data-validation")
+
+        assert response.status_code in (401, 403)

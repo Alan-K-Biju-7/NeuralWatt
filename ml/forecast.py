@@ -12,10 +12,108 @@ import os
 from pathlib import Path
 import tempfile
 
+import numpy as np
 import pandas as pd
 
 
 DEFAULT_OUTPUT = Path("ml/data/forecast_24h.csv")
+
+
+def add_cyclical_time_features(
+    frame: pd.DataFrame,
+    timestamp_col: str = "ds",
+) -> pd.DataFrame:
+    """
+    Add sin/cos time encodings for forecasting feature experiments.
+
+    This is intentionally not wired into the live Prophet endpoint yet. It gives
+    tree-based forecasters a safe feature builder where 23:00 and 00:00 are
+    treated as neighbouring hours.
+    """
+    if timestamp_col not in frame.columns:
+        raise ValueError(f"Missing timestamp column: {timestamp_col}")
+
+    result = frame.copy()
+    timestamps = pd.to_datetime(result[timestamp_col], errors="coerce")
+    hour = timestamps.dt.hour.fillna(0)
+    weekday = timestamps.dt.dayofweek.fillna(0)
+    result["sin_hour"] = np.sin(2 * np.pi * hour / 24)
+    result["cos_hour"] = np.cos(2 * np.pi * hour / 24)
+    result["sin_weekday"] = np.sin(2 * np.pi * weekday / 7)
+    result["cos_weekday"] = np.cos(2 * np.pi * weekday / 7)
+    return result
+
+
+def extract_hw_features(series: pd.Series, seasonal_periods: int = 24) -> pd.DataFrame:
+    """
+    Return Holt-Winters level, trend, seasonal, and residual feature columns.
+
+    The function is additive groundwork for a future tree-based forecaster. It
+    gracefully returns zero-valued features when data is too short or the
+    optional statsmodels dependency is unavailable.
+    """
+    clean = pd.to_numeric(series, errors="coerce").fillna(0.0)
+    index = clean.index
+    zero_features = pd.DataFrame(
+        {
+            "hw_level": np.zeros(len(clean)),
+            "hw_trend": np.zeros(len(clean)),
+            "hw_seasonal": np.zeros(len(clean)),
+            "hw_residual": np.zeros(len(clean)),
+        },
+        index=index,
+    )
+    if len(clean) < 2 * seasonal_periods:
+        return zero_features
+
+    try:
+        from statsmodels.tsa.holtwinters import ExponentialSmoothing
+
+        model = ExponentialSmoothing(
+            clean,
+            trend="add",
+            seasonal="add",
+            seasonal_periods=seasonal_periods,
+            initialization_method="estimated",
+        )
+        fit = model.fit(optimized=True, remove_bias=True)
+    except Exception:
+        return zero_features
+
+    return pd.DataFrame(
+        {
+            "hw_level": fit.level,
+            "hw_trend": fit.trend,
+            "hw_seasonal": fit.season,
+            "hw_residual": clean.to_numpy() - fit.fittedvalues.to_numpy(),
+        },
+        index=index,
+    )
+
+
+def build_forecast_feature_frame(hourly: pd.DataFrame) -> pd.DataFrame:
+    """
+    Build experimental tree-model features from hourly forecast input.
+
+    The live backend still uses Prophet. This helper is kept separate so the
+    project can evaluate Random Forest/XGBoost forecasting later without
+    changing the current endpoint contract.
+    """
+    if not {"ds", "y"}.issubset(hourly.columns):
+        raise ValueError("hourly must contain ds and y columns")
+
+    features = add_cyclical_time_features(hourly[["ds", "y"]])
+    y = pd.to_numeric(features["y"], errors="coerce").fillna(0.0)
+    features["lag_1h"] = y.shift(1).fillna(0.0)
+    features["lag_24h"] = y.shift(24).fillna(0.0)
+    features["rolling_6h_mean"] = (
+        y.shift(1).rolling(6, min_periods=1).mean().fillna(0.0)
+    )
+    features["rolling_24h_mean"] = (
+        y.shift(1).rolling(24, min_periods=1).mean().fillna(0.0)
+    )
+    hw_features = extract_hw_features(y, seasonal_periods=24).reset_index(drop=True)
+    return pd.concat([features.reset_index(drop=True), hw_features], axis=1)
 
 
 def _prepare_plot_cache() -> None:

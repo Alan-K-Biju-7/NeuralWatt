@@ -1,10 +1,17 @@
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+import sys
 
 import pandas as pd
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
 
 from app.services.forecast_service import hourly_energy_frame
 from app.services.nilm_service import get_model_card, get_shap_importance
 from app.services.recommendation_service import evaluate_rules, summarize_readings
+from ml.forecast import build_forecast_feature_frame
 
 
 def _hourly_readings(count: int = 26) -> pd.DataFrame:
@@ -24,6 +31,24 @@ def test_hourly_energy_frame_prepares_prophet_columns():
     assert list(hourly.columns) == ["ds", "y"]
     assert len(hourly) == 26
     assert round(hourly["y"].sum(), 4) == 5.2
+
+
+def test_forecast_feature_frame_adds_time_and_hw_features():
+    hourly = hourly_energy_frame(_hourly_readings(48))
+    features = build_forecast_feature_frame(hourly)
+
+    expected = {
+        "sin_hour",
+        "cos_hour",
+        "sin_weekday",
+        "cos_weekday",
+        "hw_level",
+        "hw_trend",
+        "hw_seasonal",
+        "hw_residual",
+    }
+    assert expected.issubset(features.columns)
+    assert len(features) == len(hourly)
 
 
 def test_recommendation_summary_calculates_peak_window_energy():

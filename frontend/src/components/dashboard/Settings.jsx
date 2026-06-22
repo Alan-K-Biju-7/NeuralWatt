@@ -89,6 +89,12 @@ export default function Settings({ householdId, deviceId }) {
     retry: false,
   });
 
+  const { data: validationReport } = useQuery({
+    queryKey: ["nilm-data-validation"],
+    queryFn: () => nilmAPI.dataValidation(),
+    retry: false,
+  });
+
   const { data: alertConfig, isLoading: configLoading } = useQuery({
     queryKey: ["alert-config", householdId, deviceId],
     enabled: !!householdId && !!deviceId,
@@ -346,6 +352,42 @@ export default function Settings({ householdId, deviceId }) {
                 <p className="mt-2 text-xs text-slate-500">{shapImportance.message}</p>
               )}
             </div>
+
+            {validationReport && (
+              <div className="rounded-lg border border-slate-800 bg-slate-950/50 p-4">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                    Data Validation
+                  </p>
+                  <span
+                    className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                      validationReport.is_stationary
+                        ? "bg-teal-500/10 text-teal-300"
+                        : "bg-amber-500/10 text-amber-300"
+                    }`}
+                  >
+                    {validationReport.is_stationary ? "Stationary" : "Needs differencing"}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-3 text-sm">
+                  <div>
+                    <p className="text-xs text-slate-500">ADF statistic</p>
+                    <p className="font-semibold text-white">
+                      {validationReport.adf_statistic}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-slate-500">p-value</p>
+                    <p className="font-semibold text-white">
+                      {validationReport.p_value}
+                    </p>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs leading-relaxed text-slate-400">
+                  {validationReport.recommendation}
+                </p>
+              </div>
+            )}
 
             <p className="rounded-lg border border-slate-800 bg-slate-950/50 p-4 text-sm text-slate-400">
               {modelCard.limitation}
