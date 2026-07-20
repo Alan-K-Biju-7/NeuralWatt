@@ -17,23 +17,22 @@ import json
 from pathlib import Path
 
 import pandas as pd
-import numpy as np
 from sklearn.metrics import (
     classification_report,
     confusion_matrix,
     accuracy_score,
     precision_recall_fscore_support,
 )
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import GroupKFold
 
 try:
     from .feature_extraction import load_and_extract
 except ImportError:
     from feature_extraction import load_and_extract
 
-RANDOM_SEED = 42
-TEST_SIZE = 0.2
 RESULTS_DIR = Path(__file__).parent / "results"
+CV_FOLDS = 5
+GROUP_COLUMNS = ("capture_id", "session_id")
 
 
 def load_model(model_path: str) -> dict:
@@ -133,31 +132,92 @@ def print_summary(results: dict):
     print("\n" + results["classification_report_text"])
 
 
-def select_eval_data(df: pd.DataFrame) -> tuple[pd.DataFrame, bool]:
-    """Use a held-out split when labels have enough samples; otherwise use all rows."""
-    counts = df["appliance_label"].value_counts()
-    n_classes = len(counts)
-    test_count = int(np.ceil(len(df) * TEST_SIZE))
-    train_count = len(df) - test_count
-    can_split = (
-        len(df) >= 2
-        and n_classes > 1
-        and int(counts.min()) >= 2
-        and test_count >= n_classes
-        and train_count >= n_classes
+def _clean_groups(df: pd.DataFrame, column: str) -> pd.Series:
+    groups = (
+        df[column]
+        .astype("string")
+        .fillna("")
+        .str.strip()
     )
+    return groups.mask(groups == "", "__missing_group__")
 
-    if can_split:
-        _, df_test = train_test_split(
-            df,
-            test_size=TEST_SIZE,
-            random_state=RANDOM_SEED,
-            stratify=df["appliance_label"],
-        )
-        return df_test, True
 
-    print("Skipping held-out split: need more samples per appliance class.")
-    return df, False
+def select_group_column(df: pd.DataFrame, preferred: str | None = None) -> tuple[str | None, pd.Series | None]:
+    """Choose capture/session metadata for group-aware evaluation."""
+    candidates = [preferred] if preferred else []
+    candidates.extend(column for column in GROUP_COLUMNS if column not in candidates)
+
+    for column in candidates:
+        if not column or column not in df.columns:
+            continue
+        groups = _clean_groups(df, column)
+        if int(groups.nunique()) >= 2:
+            return column, groups
+    return None, None
+
+
+def _metadata_test_groups(metadata: dict) -> tuple[str | None, set[str]]:
+    group_column = metadata.get("group_column")
+    test_groups = metadata.get("test_groups", [])
+    return group_column, {str(group) for group in test_groups}
+
+
+def select_eval_data(df: pd.DataFrame, metadata: dict) -> tuple[pd.DataFrame, bool, dict]:
+    """Use model test groups or a GroupKFold fold; never random window splits."""
+    metadata_group_column, metadata_groups = _metadata_test_groups(metadata)
+    if metadata_group_column and metadata_groups and metadata_group_column in df.columns:
+        groups = _clean_groups(df, metadata_group_column)
+        mask = groups.isin(metadata_groups)
+        if bool(mask.any()):
+            return df.loc[mask].reset_index(drop=True), True, {
+                "eval_split_strategy": "metadata_test_groups",
+                "eval_group_column": metadata_group_column,
+                "eval_group_count": int(groups[mask].nunique()),
+            }
+
+    group_column, groups = select_group_column(df, metadata_group_column)
+    if groups is None:
+        reason = "Need capture_id/session_id groups; random window evaluation is disabled."
+        print(f"Skipping held-out split: {reason}")
+        return df, False, {
+            "eval_split_strategy": "available_rows",
+            "eval_split_skipped_reason": reason,
+        }
+
+    unique_groups = groups.unique()
+    if len(unique_groups) < 2:
+        reason = "Need at least 2 capture_id/session_id groups for GroupKFold."
+        print(f"Skipping held-out split: {reason}")
+        return df, False, {
+            "eval_split_strategy": "available_rows",
+            "eval_split_skipped_reason": reason,
+        }
+
+    labels = df["appliance_label"].to_numpy()
+    all_classes = set(pd.unique(labels).tolist())
+    n_splits = min(CV_FOLDS, len(unique_groups))
+    cv = GroupKFold(n_splits=n_splits)
+
+    for fold_index, (train_idx, test_idx) in enumerate(
+        cv.split(df, labels, groups=groups.to_numpy(dtype=str)),
+        start=1,
+    ):
+        if set(pd.unique(labels[train_idx]).tolist()) != all_classes:
+            continue
+        return df.iloc[test_idx].reset_index(drop=True), True, {
+            "eval_split_strategy": "group_kfold",
+            "eval_group_column": group_column,
+            "eval_group_count": int(groups.iloc[test_idx].nunique()),
+            "eval_group_kfold_splits": n_splits,
+            "eval_fold": fold_index,
+        }
+
+    reason = "No GroupKFold split kept every appliance class in the training side."
+    print(f"Skipping held-out split: {reason}")
+    return df, False, {
+        "eval_split_strategy": "available_rows",
+        "eval_split_skipped_reason": reason,
+    }
 
 
 def main():
@@ -179,12 +239,14 @@ def main():
     else:
         parser.error("Provide --data or --features")
 
-    df_test, used_held_out_split = select_eval_data(df)
-    split_label = "held-out test" if used_held_out_split else "available"
+    metadata = artifact.get("metadata") or {}
+    df_test, used_held_out_split, split_metadata = select_eval_data(df, metadata)
+    split_label = "group-held-out test" if used_held_out_split else "available"
     print(f"Evaluating on {len(df_test)} {split_label} windows")
 
     results = evaluate(artifact, df_test)
     results["used_held_out_split"] = used_held_out_split
+    results.update(split_metadata)
     print_summary(results)
     save_results(results, Path(args.output))
 
