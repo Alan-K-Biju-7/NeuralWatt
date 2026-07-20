@@ -1,6 +1,6 @@
 {
-  "train_samples": 3901,
-  "test_samples": 976,
+  "train_samples": 4364,
+  "test_samples": 513,
   "total_feature_windows": 4877,
   "n_classes": 6,
   "classes": [
@@ -19,10 +19,23 @@
     "iron": 83,
     "electric_kettle": 51
   },
-  "train_accuracy": 1.0,
-  "test_accuracy": 0.9969262295081968,
+  "train_accuracy": 0.9963336388634281,
+  "test_accuracy": 0.8615984405458089,
   "has_test_split": true,
-  "feature_set_version": "tapo_signature_v2",
+  "feature_set_version": "tapo_signature_v3",
+  "feature_policy": "Voltage/current-derived features are excluded from v3 training to reduce location and sensor-transfer leakage.",
+  "removed_feature_cols": [
+    "mean_voltage",
+    "std_voltage",
+    "mean_current",
+    "max_current"
+  ],
+  "normalized_shape_features": [
+    "peak_to_mean_ratio",
+    "coefficient_of_variation",
+    "duty_cycle",
+    "delta_vs_rolling_baseline"
+  ],
   "raw_feature_windows_before_filter": 5743,
   "filtered_inactive_windows": 866,
   "min_active_window_power_w": 10.0,
@@ -37,6 +50,10 @@
     "p90_power",
     "power_delta",
     "std_power",
+    "peak_to_mean_ratio",
+    "coefficient_of_variation",
+    "duty_cycle",
+    "delta_vs_rolling_baseline",
     "steady_state_w",
     "active_mean_power",
     "active_max_power",
@@ -50,60 +67,56 @@
     "max_step_down",
     "rise_time_s",
     "energy_kwh_est",
-    "mean_voltage",
-    "std_voltage",
-    "mean_current",
-    "max_current",
     "is_cyclic"
   ],
   "top_feature_importance": [
     {
       "feature": "power_delta",
-      "importance": 0.22370705008506775
-    },
-    {
-      "feature": "mean_abs_step",
-      "importance": 0.12105927616357803
-    },
-    {
-      "feature": "max_current",
-      "importance": 0.08820310235023499
-    },
-    {
-      "feature": "energy_kwh_est",
-      "importance": 0.07931594550609589
-    },
-    {
-      "feature": "p90_power",
-      "importance": 0.06204720586538315
-    },
-    {
-      "feature": "max_power",
-      "importance": 0.0511842705309391
-    },
-    {
-      "feature": "std_power",
-      "importance": 0.05107595771551132
-    },
-    {
-      "feature": "p75_power",
-      "importance": 0.04428202658891678
-    },
-    {
-      "feature": "max_step_up",
-      "importance": 0.040935833007097244
+      "importance": 0.14857035875320435
     },
     {
       "feature": "active_mean_power",
-      "importance": 0.028700929135084152
+      "importance": 0.13050533831119537
     },
     {
-      "feature": "std_voltage",
-      "importance": 0.027735525742173195
+      "feature": "mean_abs_step",
+      "importance": 0.12324326485395432
+    },
+    {
+      "feature": "max_power",
+      "importance": 0.07343211024999619
+    },
+    {
+      "feature": "is_cyclic",
+      "importance": 0.06599787622690201
     },
     {
       "feature": "p25_power",
-      "importance": 0.02207646332681179
+      "importance": 0.05215202271938324
+    },
+    {
+      "feature": "delta_vs_rolling_baseline",
+      "importance": 0.051722314208745956
+    },
+    {
+      "feature": "max_step_up",
+      "importance": 0.045534104108810425
+    },
+    {
+      "feature": "max_step_down",
+      "importance": 0.04255916178226471
+    },
+    {
+      "feature": "active_max_power",
+      "importance": 0.04079384356737137
+    },
+    {
+      "feature": "min_power",
+      "importance": 0.02898990921676159
+    },
+    {
+      "feature": "std_power",
+      "importance": 0.027270931750535965
     }
   ],
   "xgb_params": {
@@ -119,15 +132,44 @@
     "n_jobs": -1
   },
   "window_size_s": 30,
-  "notes": "This is a smart-plug appliance signature classifier. It is not yet aggregate household NILM disaggregation.",
-  "cv_mean_accuracy": 0.997744430432955,
-  "cv_std_accuracy": 0.0011958770392019383,
-  "cv_fold_scores": [
-    0.9989754098360656,
-    0.9969262295081968,
-    0.997948717948718,
-    0.9989743589743589,
-    0.9958974358974358
+  "group_column": "capture_id",
+  "group_count": 26,
+  "test_split_strategy": "group_kfold",
+  "test_group_count": 8,
+  "train_group_count": 18,
+  "test_groups": [
+    "abel_plug2_washing_machine_normal_2026-06-03_S002",
+    "abel_plug2_washing_machine_superquick_2026-06-11_S007",
+    "alaina_plug4_kettle_boil_375ml_2026-06-12_S012",
+    "alaina_plug4_tablefan_speed1_2026-06-03_S004",
+    "alaina_plug4_tablefan_speed3_2026-06-10_S009",
+    "anllia_plug1_iron_long_2026-06-03_S002",
+    "anllia_plug1_iron_long_2026-06-12_S003",
+    "anllia_plug1_mixer_long_2026-06-02_S004"
   ],
-  "cv_folds": 5
+  "test_group_kfold_fold": 4,
+  "test_class_count": 5,
+  "test_class_distribution": {
+    "electric_kettle": 9,
+    "fan": 122,
+    "iron": 54,
+    "mixer_grinder": 85,
+    "washing_machine": 243
+  },
+  "group_kfold_splits": 5,
+  "skipped_candidate_test_folds": [],
+  "notes": "This is a smart-plug appliance signature classifier. It is not yet aggregate household NILM disaggregation. True NILM requires synchronized main-line aggregate readings plus appliance-level Tapo labels.",
+  "cv_mean_accuracy": 0.7189436975551198,
+  "cv_std_accuracy": 0.2687837189669504,
+  "cv_fold_scores": [
+    0.7852062588904695,
+    0.1895551257253385,
+    0.8297872340425532,
+    0.8615984405458089,
+    0.9285714285714286
+  ],
+  "cv_folds": 5,
+  "cv_requested_folds": 5,
+  "cv_strategy": "group_kfold",
+  "cv_skipped_folds": []
 }
