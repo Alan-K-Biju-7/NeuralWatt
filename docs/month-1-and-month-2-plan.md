@@ -71,20 +71,24 @@ Latest local model summary:
 
 | Metric | Value |
 |---|---:|
-| Raw rows | 7,911 |
-| Feature windows | 2,092 |
+| Raw rows | 22,723 |
+| Active feature windows | 4,877 |
 | Classes | 6 |
-| Test accuracy | 99.05% |
-| CV mean accuracy | 99.52% |
-| CV std deviation | 0.0034 |
+| Feature set | `tapo_signature_v3` |
+| Grouped holdout accuracy | 86.16% |
+| GroupKFold CV mean accuracy | 71.89% |
+| GroupKFold CV std deviation | 0.2688 |
 
 Current known model weakness:
 
 ```text
-fan vs iron
+transfer to unseen capture sessions
 ```
 
-Some high-power fan windows overlap with lower-power iron windows.
+The v3 model no longer trains on voltage/current-derived features, and it uses
+GroupKFold by `capture_id`/`session_id` instead of random window splits. The
+lower CV score is more honest because it measures generalization to unseen
+capture sessions.
 
 ## Important Limitation
 
@@ -103,7 +107,7 @@ aggregate household mains readings -> appliance-level disaggregation
 ```
 
 To reach true NILM, the project still needs synchronized aggregate household
-readings plus appliance-level labels.
+main-line readings plus Tapo appliance-level labels collected on the same clock.
 
 ## Current Demonstration Flow
 
