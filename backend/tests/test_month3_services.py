@@ -8,10 +8,10 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from app.services.forecast_service import hourly_energy_frame
-from app.services.nilm_service import get_model_card, get_shap_importance
-from app.services.recommendation_service import evaluate_rules, summarize_readings
-from ml.forecast import build_forecast_feature_frame
+from app.services.forecast_service import hourly_energy_frame  # noqa: E402
+from app.services.nilm_service import get_model_card, get_shap_importance  # noqa: E402
+from app.services.recommendation_service import evaluate_rules, summarize_readings  # noqa: E402
+from ml.forecast import build_forecast_feature_frame  # noqa: E402
 
 
 def _hourly_readings(count: int = 26) -> pd.DataFrame:
@@ -109,6 +109,11 @@ def test_nilm_model_card_reads_current_metadata():
     assert card["version"] == "nilm_v1"
     assert card["n_classes"] >= 5
     assert "washing_machine" in card["classes"]
+    assert card["feature_set"] == "tapo_signature_v3"
+    assert card["cv_strategy"] == "group_kfold"
+    assert card["group_column"] in {"capture_id", "session_id"}
+    assert "delta_vs_rolling_baseline" in card["normalized_shape_features"]
+    assert "mean_current" in card["removed_feature_cols"]
 
 
 def test_nilm_shap_importance_returns_ranked_features():
