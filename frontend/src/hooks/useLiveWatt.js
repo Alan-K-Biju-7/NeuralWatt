@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { IS_DEMO } from "../lib/api";
 
 const WS_BASE = "ws://localhost:8000";
 const MAX_HISTORY = 20;
@@ -14,6 +15,20 @@ export function useLiveWatt(householdId, deviceId) {
 
   const connect = useCallback(() => {
     if (!householdId) return;
+
+    if (IS_DEMO) {
+      setConnected(true);
+      const addReading = () => {
+        const value = Number((510 + Math.sin(Date.now() / 8000) * 135).toFixed(1));
+        const timestamp = new Date().toISOString();
+        setWatts(value);
+        setLastSeen(new Date());
+        setHistory((previous) => [...previous, { watts: value, timestamp }].slice(-MAX_HISTORY));
+      };
+      addReading();
+      retryRef.current = window.setInterval(addReading, 3000);
+      return;
+    }
 
     const url = `${WS_BASE}/ws/readings/${householdId}`;
     const socket = new WebSocket(url);
@@ -51,7 +66,7 @@ export function useLiveWatt(householdId, deviceId) {
   useEffect(() => {
     connect();
     return () => {
-      clearTimeout(retryRef.current);
+      IS_DEMO ? clearInterval(retryRef.current) : clearTimeout(retryRef.current);
       wsRef.current?.close();
     };
   }, [connect]);
