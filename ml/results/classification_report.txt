@@ -1,12 +1,12 @@
                  precision    recall  f1-score   support
 
-electric_kettle       0.91      1.00      0.95        10
-            fan       1.00      1.00      1.00        73
-         fridge       1.00      1.00      1.00       723
-           iron       1.00      1.00      1.00        17
-  mixer_grinder       0.96      0.96      0.96        24
-washing_machine       1.00      0.99      1.00       129
+electric_kettle       0.23      1.00      0.38         9
+            fan       1.00      0.77      0.87       122
+         fridge       0.00      0.00      0.00         0
+           iron       1.00      0.44      0.62        54
+  mixer_grinder       1.00      0.86      0.92        85
+washing_machine       0.96      1.00      0.98       243
 
-       accuracy                           1.00       976
-      macro avg       0.98      0.99      0.98       976
-   weighted avg       1.00      1.00      1.00       976
+       accuracy                           0.86       513
+      macro avg       0.70      0.68      0.63       513
+   weighted avg       0.97      0.86      0.89       513
