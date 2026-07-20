@@ -1,7 +1,7 @@
 ,electric_kettle,fan,fridge,iron,mixer_grinder,washing_machine
-electric_kettle,10,0,0,0,0,0
-fan,0,73,0,0,0,0
-fridge,0,0,722,0,1,0
-iron,0,0,0,17,0,0
-mixer_grinder,0,0,1,0,23,0
-washing_machine,1,0,0,0,0,128
+electric_kettle,9,0,0,0,0,0
+fan,0,94,27,0,0,1
+fridge,0,0,0,0,0,0
+iron,30,0,0,24,0,0
+mixer_grinder,0,0,2,0,73,10
+washing_machine,0,0,1,0,0,242
