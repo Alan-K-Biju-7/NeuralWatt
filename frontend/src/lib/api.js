@@ -1,4 +1,11 @@
 import axios from "axios";
+import {
+  demoAlertAPI, demoAnalyticsAPI, demoAnomalyAPI, demoAuthAPI,
+  demoForecastAPI, demoHouseholdAPI, demoNilmAPI, demoReadingAPI,
+  demoRecommendationAPI,
+} from "./demoApi";
+
+export const IS_DEMO = import.meta.env.VITE_DEMO_MODE === "true";
 
 const BASE_URL = import.meta.env.VITE_API_URL || "http://localhost:8000/api/v1";
 
@@ -24,20 +31,20 @@ api.interceptors.response.use(
   }
 );
 
-export const authAPI = {
+const liveAuthAPI = {
   register: (data) => api.post("/auth/register", data),
   login:    (data) => api.post("/auth/login",    data),
   me:       ()     => api.get("/auth/me"),
 };
 
-export const householdAPI = {
+const liveHouseholdAPI = {
   create:     (data)        => api.post("/households", data),
   getMine:    ()            => api.get("/households/me"),
   addDevice:  (hid, data)   => api.post(`/households/${hid}/devices`, data),
   getDevices: (hid)         => api.get(`/households/${hid}/devices`),
 };
 
-export const readingAPI = {
+const liveReadingAPI = {
   create: (hid, did, data) =>
     api.post(`/households/${hid}/devices/${did}/readings`, data),
   list: (hid, did, params) =>
@@ -46,7 +53,7 @@ export const readingAPI = {
     api.get(`/households/${hid}/devices/${did}/stats`, { params }),
 };
 
-export const anomalyAPI = {
+const liveAnomalyAPI = {
   list: (hid, did, params) =>
     api.get(`/households/${hid}/devices/${did}/anomalies`, { params }),
   baseline: (hid, did) =>
@@ -57,7 +64,7 @@ export const anomalyAPI = {
     }),
 };
 
-export const alertAPI = {
+const liveAlertAPI = {
   create: (hid, did, data) =>
     api.post(`/households/${hid}/devices/${did}/alert-config`, data),
   get:    (hid, did)       =>
@@ -68,7 +75,7 @@ export const alertAPI = {
     api.delete(`/households/${hid}/devices/${did}/alert-config`),
 };
 
-export const analyticsAPI = {
+const liveAnalyticsAPI = {
   daily:   (hid, did, days = 30) =>
     api.get(`/households/${hid}/devices/${did}/analytics/daily`,   { params: { days } }),
   hourly:  (hid, did, days = 7)  =>
@@ -79,7 +86,7 @@ export const analyticsAPI = {
     api.get(`/households/${hid}/devices/${did}/analytics/cost`,    { params: { days } }),
 };
 
-export const nilmAPI = {
+const liveNilmAPI = {
   predict: (readings, windowSizeS = 30) =>
     api.post("/nilm/predict", {
       readings,
@@ -90,13 +97,23 @@ export const nilmAPI = {
   dataValidation: () => api.get("/nilm/data-validation").then((res) => res.data),
 };
 
-export const forecastAPI = {
+const liveForecastAPI = {
   get: (hid, days = 30) =>
     api.get(`/forecast/${hid}`, { params: { days } }).then((res) => res.data),
 };
 
-export const recommendationAPI = {
+const liveRecommendationAPI = {
   get: (hid) => api.get(`/recommendations/${hid}`).then((res) => res.data),
 };
+
+export const authAPI = IS_DEMO ? demoAuthAPI : liveAuthAPI;
+export const householdAPI = IS_DEMO ? demoHouseholdAPI : liveHouseholdAPI;
+export const readingAPI = IS_DEMO ? demoReadingAPI : liveReadingAPI;
+export const anomalyAPI = IS_DEMO ? demoAnomalyAPI : liveAnomalyAPI;
+export const alertAPI = IS_DEMO ? demoAlertAPI : liveAlertAPI;
+export const analyticsAPI = IS_DEMO ? demoAnalyticsAPI : liveAnalyticsAPI;
+export const nilmAPI = IS_DEMO ? demoNilmAPI : liveNilmAPI;
+export const forecastAPI = IS_DEMO ? demoForecastAPI : liveForecastAPI;
+export const recommendationAPI = IS_DEMO ? demoRecommendationAPI : liveRecommendationAPI;
 
 export default api;
