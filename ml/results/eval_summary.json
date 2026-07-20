@@ -1,46 +1,46 @@
 {
-  "accuracy": 0.9969262295081968,
+  "accuracy": 0.8615984405458089,
   "per_class": {
     "electric_kettle": {
-      "precision": 0.9090909090909091,
+      "precision": 0.23076923076923078,
       "recall": 1.0,
-      "f1": 0.9523809523809523,
-      "support": 10
+      "f1": 0.375,
+      "support": 9
     },
     "fan": {
       "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0,
-      "support": 73
+      "recall": 0.7704918032786885,
+      "f1": 0.8703703703703703,
+      "support": 122
     },
     "fridge": {
-      "precision": 0.9986168741355463,
-      "recall": 0.9986168741355463,
-      "f1": 0.9986168741355463,
-      "support": 723
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "support": 0
     },
     "iron": {
       "precision": 1.0,
-      "recall": 1.0,
-      "f1": 1.0,
-      "support": 17
+      "recall": 0.4444444444444444,
+      "f1": 0.6153846153846154,
+      "support": 54
     },
     "mixer_grinder": {
-      "precision": 0.9583333333333334,
-      "recall": 0.9583333333333334,
-      "f1": 0.9583333333333334,
-      "support": 24
+      "precision": 1.0,
+      "recall": 0.8588235294117647,
+      "f1": 0.9240506329113924,
+      "support": 85
     },
     "washing_machine": {
-      "precision": 1.0,
-      "recall": 0.9922480620155039,
-      "f1": 0.9961089494163424,
-      "support": 129
+      "precision": 0.9565217391304348,
+      "recall": 0.9958847736625515,
+      "f1": 0.9758064516129032,
+      "support": 243
     }
   },
   "confusion_matrix": [
     [
-      10,
+      9,
       0,
       0,
       0,
@@ -48,44 +48,44 @@
       0
     ],
     [
+      0,
+      94,
+      27,
+      0,
+      0,
+      1
+    ],
+    [
+      0,
+      0,
+      0,
+      0,
+      0,
+      0
+    ],
+    [
+      30,
+      0,
+      0,
+      24,
+      0,
+      0
+    ],
+    [
+      0,
+      0,
+      2,
       0,
       73,
-      0,
-      0,
-      0,
-      0
-    ],
-    [
-      0,
-      0,
-      722,
-      0,
-      1,
-      0
-    ],
-    [
-      0,
-      0,
-      0,
-      17,
-      0,
-      0
+      10
     ],
     [
       0,
       0,
       1,
       0,
-      23,
-      0
-    ],
-    [
-      1,
       0,
-      0,
-      0,
-      0,
-      128
+      242
     ]
   ],
   "class_labels": [
@@ -96,5 +96,8 @@
     "mixer_grinder",
     "washing_machine"
   ],
-  "used_held_out_split": true
+  "used_held_out_split": true,
+  "eval_split_strategy": "metadata_test_groups",
+  "eval_group_column": "capture_id",
+  "eval_group_count": 8
 }
