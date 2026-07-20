@@ -6,6 +6,9 @@ storage, a React dashboard, tariff-aware billing, anomaly detection, and an
 early NILM appliance-classification pipeline trained on real TP-Link Tapo P110
 smart plug data.
 
+[Open the interactive demo](https://alan-k-biju-7.github.io/NeuralWatt/) ·
+[API reference](docs/api/endpoints.md) · [ML guide](ml/README.md)
+
 The long-term goal is a single-platform energy intelligence system that can
 monitor real-time household power, estimate appliance-level usage, detect
 wasteful behavior, forecast electricity bills, and recommend when to shift loads
@@ -13,7 +16,9 @@ for lower cost and better solar self-consumption.
 
 ## Current Status
 
-The project is currently in a strong Month 1 / early Month 2 stage.
+The monitoring foundation and first intelligence layer are implemented. The
+project is now focused on stronger real-home validation and synchronized
+aggregate/appliance data collection.
 
 | Area | Status |
 |---|---|
@@ -29,8 +34,14 @@ The project is currently in a strong Month 1 / early Month 2 stage.
 | Real Tapo P110 data pipeline | Implemented |
 | NILM baseline classifier | Implemented six-class baseline |
 | NILM prediction CLI/API | Implemented |
+| Capture-group NILM validation | Implemented |
+| 24-hour demand forecasting | Implemented baseline |
+| Rule-based recommendations | Implemented baseline |
+| Model card and feature explanations | Implemented |
+| ESP32/PZEM serial bridge | Implemented |
+| GitHub Pages portfolio demo | Automated from `dev` |
 | Aggregate main-line NILM | Not yet implemented |
-| Forecasting, solar, recommendations, SHAP | Planned |
+| Solar-aware scheduling | Planned |
 
 ## Key Features
 
@@ -46,6 +57,10 @@ The project is currently in a strong Month 1 / early Month 2 stage.
 - Email/webhook alert configuration foundation.
 - Local simulator for safe demos without mains wiring.
 - Feature-rich NILM pipeline using XGBoost on labelled smart-plug appliance data.
+- Capture-aware GroupKFold evaluation that avoids random-window leakage.
+- 24-hour usage forecasts, savings recommendations, and model transparency views.
+- ESP32/PZEM serial bridge plus a lightweight backend for live hardware trials.
+- Self-contained GitHub Pages demo with realistic Kerala household telemetry.
 
 ## Tech Stack
 
@@ -57,7 +72,7 @@ The project is currently in a strong Month 1 / early Month 2 stage.
 | Auth | JWT, bcrypt/passlib |
 | Realtime | WebSocket |
 | ML | pandas, scikit-learn, XGBoost |
-| DevOps | Docker Compose, Makefile |
+| DevOps | Docker Compose, Makefile, GitHub Actions, GitHub Pages |
 | Data source | Simulator, Tapo P110 smart plug CSVs, future ESP32/PZEM |
 
 ## Architecture
@@ -102,6 +117,29 @@ NeuralWatt/
 `-- README.md
 ```
 
+## Interactive Demo
+
+The public dashboard is deployed at:
+
+**https://alan-k-biju-7.github.io/NeuralWatt/**
+
+Use the seeded public account:
+
+```text
+Email: simulator@neuralwatt.app
+Password: Sim@12345
+Household: Ancy Biju Home
+```
+
+The Pages build runs entirely in the browser with deterministic demonstration
+data. It shows live-style readings, 30-day analytics, KSEB billing, anomalies,
+appliance classification, forecasting, recommendations, alert settings, and
+model evidence without exposing a database or production secret. Data changed
+inside the public demo is temporary and resets on reload.
+
+Every push to `dev` triggers `.github/workflows/pages.yml`. In repository
+Settings, Pages must use **GitHub Actions** as its source.
+
 ## Quick Start
 
 Start the full local demo:
@@ -117,6 +155,10 @@ Then open:
 
 The simulator automatically registers/logs in a demo user, creates a household
 and device, stores the device key, and sends readings every 30 seconds.
+
+The local simulator uses the same intentionally public demo credentials shown
+above. Override `SIM_EMAIL`, `SIM_PASSWORD`, and `SIM_FULL_NAME` for a different
+local fixture.
 
 Stop the demo:
 
@@ -176,19 +218,19 @@ Current baseline result:
 | Metric | Value |
 |---|---:|
 | Classes | 6 |
-| Raw rows | 7,911 |
-| Feature windows | 2,092 |
-| Feature set | `tapo_signature_v2` |
-| Test accuracy | 99.05% |
-| CV mean accuracy | 99.52% |
-| CV std deviation | 0.0034 |
+| Raw rows | 22,723 |
+| Active feature windows | 4,877 |
+| Feature set | `tapo_signature_v3` |
+| Grouped holdout accuracy | 86.16% |
+| GroupKFold CV mean accuracy | 71.89% |
+| GroupKFold CV std deviation | 0.2688 |
 
 Important limitation: this is currently an appliance signature classifier
 trained on smart-plug data. It is not yet a full aggregate NILM disaggregation
 model. For full NILM, the project still needs synchronized main-line aggregate
-power readings plus appliance-level labels. The current evaluation splits
-windows from the same appliance captures, so the result is a strong development
-baseline rather than a final real-home generalization score.
+power readings plus Tapo appliance-level labels. The current v3 evaluation uses
+GroupKFold by `capture_id`/`session_id` instead of random window splits, so the
+score is a more honest capture-transfer baseline.
 
 Run the ML pipeline:
 
@@ -240,19 +282,27 @@ brew install libomp
 
 Latest verified state:
 
-- Backend tests: `12 passed`
-- Frontend build: passed
+- Backend suite: `28 passed` at the latest full verification
+- Frontend production build: passed
+- GitHub Pages demo build: passed with `/NeuralWatt/` base path
 - ML scripts: compile successfully
+- Grouped NILM evaluation: passed on 513 held-out capture windows
+
+The frontend currently emits a non-blocking Vite warning because the main
+JavaScript bundle is larger than 500 kB. Route-level code splitting is a future
+performance improvement, not a deployment blocker.
 
 ## Hardware Path
 
 The safe demo path uses the simulator or smart plugs.
 
-For real household measurement, the planned hardware path is:
+For real household measurement, the available hardware path is:
 
 - ESP32 or Raspberry Pi edge node.
 - PZEM-004T or calibrated current/voltage sensing.
-- WiFi transmission to the FastAPI ingestion API.
+- `scripts/serial_pzem_bridge.py` for serial ingestion.
+- `scripts/live_test_backend.py` for isolated end-to-end hardware trials.
+- Wi-Fi/HTTP transmission to the full FastAPI ingestion API.
 
 Real AC mains wiring must only be done with proper supervision and safety
 precautions.
@@ -267,23 +317,23 @@ Near-term priorities:
 3. Collect synchronized aggregate household readings.
 4. Move from smart-plug signature classification to true aggregate NILM.
 
-Next intelligence layer:
+Later intelligence work:
 
-1. Monthly bill forecasting with weather features.
-2. Tariff-aware recommendation engine.
-3. Carbon footprint tracker.
-4. Energy score and gamification.
-5. Solar profile CSV parser and solar-aware scheduling.
-6. SHAP explanations for NILM and forecast models.
-7. WhatsApp alert integration.
+1. Add weather and calendar features to the current forecast baseline.
+2. Extend recommendations beyond deterministic household rules.
+3. Add a carbon footprint tracker.
+4. Add energy scoring and gamification.
+5. Build a solar profile parser and solar-aware scheduling.
+6. Extend explanation coverage to forecast models.
+7. Add WhatsApp alert integration.
 
 ## Project Positioning
 
 NeuralWatt is being built as a full-stack energy intelligence platform:
 
 ```text
-real-time sensing -> cloud ingestion -> analytics -> NILM baseline ->
-anomaly detection -> billing insight -> future recommendations and solar scheduling
+real-time sensing -> cloud ingestion -> analytics -> grouped NILM baseline ->
+anomaly detection -> billing insight -> forecasting and recommendations
 ```
 
 Current honest project claim:
