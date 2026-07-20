@@ -1,6 +1,6 @@
 # NeuralWatt Project Context
 
-Last updated: 2026-06-11
+Last updated: 2026-06-23
 
 ## One-Line Summary
 
@@ -364,21 +364,22 @@ Latest local dataset metrics:
 
 | Metric | Value |
 |---|---:|
-| Raw rows | 7,911 |
-| Feature windows | 2,092 |
+| Raw rows | 22,723 |
+| Active feature windows | 4,877 |
+| Raw feature windows before inactive filtering | 5,743 |
 | Classes | 6 |
-| Feature set | `tapo_signature_v2` |
+| Feature set | `tapo_signature_v3` |
 
 Class distribution by feature windows:
 
 | Class | Windows |
 |---|---:|
-| `washing_machine` | 1,027 |
-| `fridge` | 389 |
-| `fan` | 374 |
-| `mixer_grinder` | 142 |
-| `iron` | 121 |
-| `electric_kettle` | 39 |
+| `fridge` | 3,613 |
+| `washing_machine` | 646 |
+| `fan` | 362 |
+| `mixer_grinder` | 122 |
+| `iron` | 83 |
+| `electric_kettle` | 51 |
 
 ## Current NILM Model Result
 
@@ -386,40 +387,45 @@ Latest local model:
 
 | Metric | Value |
 |---|---:|
-| Train windows | 1,673 |
-| Test windows | 419 |
-| Test accuracy | 99.05% |
-| CV mean accuracy | 99.52% |
-| CV std deviation | 0.0034 |
+| Train windows | 4,364 |
+| Grouped holdout windows | 513 |
+| Grouped holdout accuracy | 86.16% |
+| GroupKFold CV mean accuracy | 71.89% |
+| GroupKFold CV std deviation | 0.2688 |
+| Group column | `capture_id` |
+| Total groups | 26 |
+| Held-out groups | 8 |
 
 Latest confusion matrix summary:
 
 ```text
-electric_kettle -> correct: 8/8
-fan             -> correct: 72/75, misread as iron: 3
-fridge          -> correct: 78/78
-iron            -> correct: 24/24
-mixer_grinder   -> correct: 27/28, misread as washing_machine: 1
-washing_machine -> correct: 206/206
+electric_kettle -> correct: 9/9
+fan             -> correct: 94/122, misread as fridge: 27, washing_machine: 1
+fridge          -> no held-out support in selected fold
+iron            -> correct: 24/54, misread as electric_kettle: 30
+mixer_grinder   -> correct: 73/85, misread as fridge: 2, washing_machine: 10
+washing_machine -> correct: 242/243, misread as fridge: 1
 ```
 
 Current main weakness:
 
 ```text
-fan vs iron
+transfer to unseen capture sessions
 ```
 
 Reason:
 
-The newer fan captures are higher-power fan sessions, around 100-140 W. Some
-of those windows overlap with lower-power/idle portions of iron behavior.
+The v3 model now validates by capture group instead of random windows, so it
+measures whether the model generalizes to unseen sessions. The selected grouped
+holdout covers five appliance classes but no fridge windows; the current fridge
+data is concentrated heavily in a small number of capture groups.
 
 ## Feature Set
 
 Current feature set version:
 
 ```text
-tapo_signature_v2
+tapo_signature_v3
 ```
 
 It uses 30-second time windows and includes:
@@ -427,6 +433,8 @@ It uses 30-second time windows and includes:
 - Mean/max/min/median power
 - Power quantiles
 - Power delta and standard deviation
+- Normalized shape features: peak-to-mean ratio, coefficient of variation, duty
+  cycle, and delta versus rolling baseline
 - Active-power statistics
 - On/off fraction
 - High-power and very-high-power fractions
@@ -434,11 +442,12 @@ It uses 30-second time windows and includes:
 - Step-change features
 - Rise time
 - Estimated window energy
-- Voltage/current summary features
 - Cyclic behavior flag
 
 Duration and sample interval are kept in feature CSVs for inspection, but they
 are excluded from model training to avoid collection-setting leakage.
+Voltage/current-derived features are intentionally removed from training to
+reduce location and sensor-transfer leakage.
 
 ## Recent Dataset Improvements
 
@@ -456,7 +465,9 @@ Impact:
 - Washing-machine windows increased strongly.
 - Fan diversity improved.
 - Model became more realistic.
-- Overall accuracy stayed high, but fan-vs-iron confusion appeared.
+- Random-window accuracy was replaced with more honest GroupKFold validation by
+  `capture_id`.
+- Grouped validation exposed transfer weakness across unseen capture sessions.
 
 ## Current Local Git State Note
 
@@ -523,9 +534,10 @@ python ml/predict_nilm.py --csv ml/data/appliance_data_real.csv --limit 10
 
 Latest verified checks from the recent implementation work:
 
-- Backend tests: `12 passed`
+- Backend tests: `28 passed`
 - Frontend build: passed
 - ML scripts: compile successfully
+- Grouped NILM evaluation: passed on 513 held-out capture windows
 - NILM CLI prediction: passed
 - Backend NILM service prediction: works locally after installing `libomp`
 
@@ -543,12 +555,14 @@ Important gaps:
 
 - No true aggregate household NILM yet.
 - No synchronized main-line aggregate readings yet.
+- No synchronized dataset joining main-line aggregate power with Tapo
+  appliance-level labels yet.
 - No induction cooker, geyser, AC, TV, microwave, or laptop charger data yet.
 - Fridge has only one real capture, so it needs more long cyclic sessions.
 - Iron has only one strong multi-cycle capture, and now overlaps with fan.
 - Kettle has only 39 feature windows, so it should get more sessions later.
-- Evaluation currently splits windows from the same captures, so it is a
-  development baseline, not final real-home generalization proof.
+- No single GroupKFold holdout currently contains all six appliance classes, so
+  per-class metrics still need a more balanced capture plan.
 - Model artifact `nilm_v1.pkl` is ignored by git and must be regenerated or
   provided separately in deployment.
 - Loading old `.pkl` artifacts across different scikit-learn versions can emit
