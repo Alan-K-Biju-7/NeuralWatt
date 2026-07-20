@@ -2,12 +2,14 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import useAuthStore from "../store/authStore";
 import { Zap, Mail, Lock, User, AlertCircle } from "lucide-react";
+import { demoCredentials } from "../lib/demoApi";
+import { IS_DEMO } from "../lib/api";
 
 export default function Login() {
   const [mode, setMode]       = useState("login");   // "login" | "register"
   const [name, setName]       = useState("");
-  const [email, setEmail]     = useState("");
-  const [password, setPass]   = useState("");
+  const [email, setEmail]     = useState(IS_DEMO ? demoCredentials.email : "");
+  const [password, setPass]   = useState(IS_DEMO ? demoCredentials.password : "");
   const navigate              = useNavigate();
   const { login, register, isLoading, error, clearError } = useAuthStore();
 
@@ -49,6 +51,14 @@ export default function Login() {
               ? "Sign in to your energy dashboard"
               : "Start monitoring your energy usage"}
           </p>
+
+          {IS_DEMO && mode === "login" && (
+            <div className="mb-5 rounded-lg border border-teal-500/25 bg-teal-500/10 px-4 py-3 text-xs text-teal-100">
+              <p className="font-semibold">Public demo account</p>
+              <p className="mt-1 font-mono">{demoCredentials.email}</p>
+              <p className="font-mono">{demoCredentials.password}</p>
+            </div>
+          )}
 
           {error && (
             <div className="flex items-center gap-2 bg-red-500/10 border border-red-500/30
