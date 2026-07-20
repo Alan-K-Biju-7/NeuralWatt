@@ -101,20 +101,30 @@ Current baseline:
 | Metric | Value |
 |---|---:|
 | Classes | 6 |
-| Raw rows | 7,911 |
-| Feature windows | 2,092 |
-| Feature set | `tapo_signature_v2` |
-| Test accuracy | `99.05%` |
-| CV mean accuracy | `99.52%` |
-| CV std deviation | `0.0034` |
+| Raw rows | 22,723 |
+| Active feature windows | 4,877 |
+| Raw feature windows before inactive filtering | 5,743 |
+| Feature set | `tapo_signature_v3` |
+| Grouped holdout accuracy | `86.16%` |
+| GroupKFold CV mean accuracy | `71.89%` |
+| GroupKFold CV std deviation | `0.2688` |
 
-The `tapo_signature_v2` feature set uses 30-second time windows and trains on
+The `tapo_signature_v3` feature set uses 30-second time windows and trains on
 steady-state power, quantiles, active-power statistics, on/off transitions, step
-changes, estimated window energy, and voltage/current features. Duration and
-sample interval are kept in the feature CSV for inspection but are excluded from
-model training to avoid collection-setting leakage. The evaluation currently
-splits windows from the same captures, so treat the score as a strong
-development baseline rather than final aggregate-NILM proof.
+changes, estimated window energy, cyclic behavior, and normalized shape
+features: peak-to-mean ratio, coefficient of variation, duty cycle, and delta
+versus rolling baseline. Voltage/current-derived features are intentionally
+excluded to reduce location and sensor-transfer leakage.
+
+Duration and sample interval are kept in the feature CSV for inspection but are
+excluded from model training to avoid collection-setting leakage. `capture_id`
+and `session_id` are also kept in the feature CSV so training and evaluation can
+use `GroupKFold` by capture/session instead of random window splits.
+
+The current grouped holdout uses `capture_id`, 26 total capture groups, and 8
+held-out groups covering 513 windows across 5 appliance classes. The GroupKFold
+CV mean is lower than the older random-window score because it measures
+generalization to unseen capture sessions.
 
 ## Prediction
 
@@ -184,6 +194,22 @@ For model training, combine labelled appliance captures before running
 | Test accuracy | `>= 80%` |
 | Precision per class | `>= 75%` |
 | Recall per class | `>= 80%` |
+
+## True Aggregate NILM Data Collection
+
+The current model is still a smart-plug appliance signature classifier, not true
+household aggregate disaggregation. To move to true NILM, collect synchronized
+readings like this:
+
+| Stream | Required fields | Purpose |
+|---|---|---|
+| Main-line sensor | `timestamp`, `aggregate_power_w`, `voltage_v`, `current_a`, `power_factor` | Household mains signal to disaggregate |
+| Tapo P110 labels | `timestamp`, `appliance_label`, `power_w`, `capture_id` or `session_id` | Ground-truth appliance activity |
+| Sync metadata | timezone, sample interval, clock source, household id | Align mains and appliance labels safely |
+
+Run appliance-labelled sessions while the main-line sensor records continuously.
+Keep the same clock source or record clock drift so aggregate readings and Tapo
+labels can be joined by timestamp.
 
 ## Tapo P110 Integration
 
