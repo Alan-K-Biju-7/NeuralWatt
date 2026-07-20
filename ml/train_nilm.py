@@ -17,20 +17,28 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
-from sklearn.model_selection import train_test_split, StratifiedKFold, cross_val_score
+from sklearn.metrics import accuracy_score
+from sklearn.model_selection import GroupKFold
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.class_weight import compute_sample_weight
 
 try:
-    from .feature_extraction import FEATURE_COLUMNS, load_and_extract
+    from .feature_extraction import FEATURE_COLUMNS, FEATURE_SET_VERSION, load_and_extract
 except ImportError:
-    from feature_extraction import FEATURE_COLUMNS, load_and_extract
+    from feature_extraction import FEATURE_COLUMNS, FEATURE_SET_VERSION, load_and_extract
 
 MODELS_DIR = Path(__file__).parent / "models"
 DATA_DIR = Path(__file__).parent / "data"
 RANDOM_SEED = 42
-TEST_SIZE = 0.2
 CV_FOLDS = 5
+GROUP_COLUMNS = ("capture_id", "session_id")
+REMOVED_FEATURE_COLS = ["mean_voltage", "std_voltage", "mean_current", "max_current"]
+NORMALIZED_SHAPE_FEATURES = [
+    "peak_to_mean_ratio",
+    "coefficient_of_variation",
+    "duty_cycle",
+    "delta_vs_rolling_baseline",
+]
 
 # Feature-rich XGBoost baseline for low-frequency Tapo P110 appliance signatures.
 XGB_PARAMS = {
@@ -97,51 +105,194 @@ def train(X_train, y_train):
     return model
 
 
-def cross_validate_model(model, X, y) -> dict:
-    """Stratified k-fold cross-validation."""
-    class_counts = np.bincount(y)
-    min_class_count = int(class_counts.min()) if len(class_counts) else 0
-    if min_class_count < 2:
-        return {
-            "cv_mean_accuracy": None,
-            "cv_std_accuracy": None,
-            "cv_fold_scores": [],
-            "cv_folds": 0,
-            "cv_skipped_reason": "Need at least 2 samples per class for stratified CV.",
-        }
+def select_group_column(df: pd.DataFrame) -> tuple[str | None, np.ndarray | None]:
+    """Choose capture/session metadata for group-aware validation."""
+    for column in GROUP_COLUMNS:
+        if column not in df.columns:
+            continue
+        groups = (
+            df[column]
+            .astype("string")
+            .fillna("")
+            .str.strip()
+        )
+        groups = groups.mask(groups == "", "__missing_group__")
+        if int(groups.nunique()) >= 2:
+            return column, groups.to_numpy(dtype=str)
+    return None, None
 
-    n_splits = min(CV_FOLDS, min_class_count)
-    cv = StratifiedKFold(n_splits=n_splits, shuffle=True, random_state=RANDOM_SEED)
-    scores = cross_val_score(model, X, y, cv=cv, scoring="accuracy")
+
+def _skip_group_validation(reason: str) -> dict:
     return {
-        "cv_mean_accuracy": float(scores.mean()),
-        "cv_std_accuracy": float(scores.std()),
-        "cv_fold_scores": scores.tolist(),
-        "cv_folds": n_splits,
+        "cv_mean_accuracy": None,
+        "cv_std_accuracy": None,
+        "cv_fold_scores": [],
+        "cv_folds": 0,
+        "cv_strategy": "group_kfold",
+        "cv_skipped_reason": reason,
     }
 
 
-def split_train_test(X, y):
-    """Use a stratified split only when every class has enough samples."""
-    class_counts = np.bincount(y)
-    n_classes = len(class_counts)
-    test_count = int(np.ceil(len(y) * TEST_SIZE))
-    train_count = len(y) - test_count
-    can_split = (
-        len(y) >= 2
-        and n_classes > 1
-        and int(class_counts.min()) >= 2
-        and test_count >= n_classes
-        and train_count >= n_classes
-    )
+def _valid_group_train_split(y_train: np.ndarray, all_classes: np.ndarray) -> bool:
+    return set(np.unique(y_train).tolist()) == set(all_classes.tolist())
 
-    if can_split:
-        return (*train_test_split(
-            X, y, test_size=TEST_SIZE, random_state=RANDOM_SEED, stratify=y
-        ), True)
 
-    print("Skipping stratified test split: need more samples per appliance class.")
-    return X, None, y, None, False
+def cross_validate_model(X, y, groups: np.ndarray | None) -> dict:
+    """GroupKFold cross-validation by capture/session metadata."""
+    if groups is None:
+        return {
+            **_skip_group_validation(
+                "Need at least 2 capture_id/session_id groups; random window CV is disabled."
+            ),
+        }
+
+    unique_groups = np.unique(groups)
+    if len(unique_groups) < 2:
+        return {
+            **_skip_group_validation(
+                "Need at least 2 capture_id/session_id groups for GroupKFold."
+            ),
+        }
+
+    n_splits = min(CV_FOLDS, len(unique_groups))
+    all_classes = np.unique(y)
+    cv = GroupKFold(n_splits=n_splits)
+    scores = []
+    skipped_folds = []
+
+    for fold_index, (train_idx, test_idx) in enumerate(
+        cv.split(X, y, groups=groups),
+        start=1,
+    ):
+        if not _valid_group_train_split(y[train_idx], all_classes):
+            skipped_folds.append({
+                "fold": fold_index,
+                "reason": "training groups did not include every appliance class",
+            })
+            continue
+        fold_model = train(X[train_idx], y[train_idx])
+        score = accuracy_score(y[test_idx], fold_model.predict(X[test_idx]))
+        scores.append(float(score))
+
+    if not scores:
+        return {
+            **_skip_group_validation(
+                "No GroupKFold split kept every appliance class in the training fold."
+            ),
+            "cv_requested_folds": n_splits,
+            "cv_skipped_folds": skipped_folds,
+        }
+
+    score_array = np.asarray(scores, dtype=float)
+    return {
+        "cv_mean_accuracy": float(score_array.mean()),
+        "cv_std_accuracy": float(score_array.std()),
+        "cv_fold_scores": scores,
+        "cv_folds": len(scores),
+        "cv_requested_folds": n_splits,
+        "cv_strategy": "group_kfold",
+        "cv_skipped_folds": skipped_folds,
+    }
+
+
+def split_train_test_by_group(
+    X,
+    y,
+    groups: np.ndarray | None,
+    class_names: list[str],
+) -> tuple[np.ndarray, np.ndarray | None, np.ndarray, np.ndarray | None, bool, dict]:
+    """Use the most appliance-diverse valid GroupKFold fold as held-out test."""
+    if groups is None:
+        reason = "Need capture_id/session_id groups; random window split is disabled."
+        print(f"Skipping held-out test split: {reason}")
+        return X, None, y, None, False, {
+            "test_split_strategy": "group_kfold",
+            "test_split_skipped_reason": reason,
+        }
+
+    unique_groups = np.unique(groups)
+    if len(unique_groups) < 2:
+        reason = "Need at least 2 capture_id/session_id groups for GroupKFold."
+        print(f"Skipping held-out test split: {reason}")
+        return X, None, y, None, False, {
+            "test_split_strategy": "group_kfold",
+            "test_split_skipped_reason": reason,
+        }
+
+    n_splits = min(CV_FOLDS, len(unique_groups))
+    all_classes = np.unique(y)
+    cv = GroupKFold(n_splits=n_splits)
+    skipped_folds = []
+    candidates = []
+
+    for fold_index, (train_idx, test_idx) in enumerate(
+        cv.split(X, y, groups=groups),
+        start=1,
+    ):
+        if not _valid_group_train_split(y[train_idx], all_classes):
+            skipped_folds.append({
+                "fold": fold_index,
+                "reason": "training groups did not include every appliance class",
+            })
+            continue
+        train_groups = sorted(set(groups[train_idx].tolist()))
+        test_groups = sorted(set(groups[test_idx].tolist()))
+        test_labels, test_counts = np.unique(y[test_idx], return_counts=True)
+        class_distribution = {
+            class_names[int(label)]: int(count)
+            for label, count in zip(test_labels, test_counts)
+        }
+        candidates.append({
+            "fold": fold_index,
+            "train_idx": train_idx,
+            "test_idx": test_idx,
+            "train_groups": train_groups,
+            "test_groups": test_groups,
+            "test_class_count": len(test_labels),
+            "min_test_class_support": int(test_counts.min()) if len(test_counts) else 0,
+            "test_samples": len(test_idx),
+            "test_class_distribution": class_distribution,
+        })
+
+    if candidates:
+        target_test_size = len(y) / n_splits
+        best = max(
+            candidates,
+            key=lambda item: (
+                item["test_class_count"],
+                item["min_test_class_support"],
+                -abs(item["test_samples"] - target_test_size),
+            ),
+        )
+        train_idx = best["train_idx"]
+        test_idx = best["test_idx"]
+        return (
+            X[train_idx],
+            X[test_idx],
+            y[train_idx],
+            y[test_idx],
+            True,
+            {
+                "test_split_strategy": "group_kfold",
+                "test_group_count": len(best["test_groups"]),
+                "train_group_count": len(best["train_groups"]),
+                "test_groups": best["test_groups"],
+                "test_group_kfold_fold": best["fold"],
+                "test_class_count": best["test_class_count"],
+                "test_class_distribution": best["test_class_distribution"],
+                "group_kfold_splits": n_splits,
+                "skipped_candidate_test_folds": skipped_folds,
+            },
+        )
+
+    reason = "No GroupKFold split kept every appliance class in the training fold."
+    print(f"Skipping held-out test split: {reason}")
+    return X, None, y, None, False, {
+        "test_split_strategy": "group_kfold",
+        "test_split_skipped_reason": reason,
+        "group_kfold_splits": n_splits,
+        "skipped_candidate_test_folds": skipped_folds,
+    }
 
 
 def save_model(model, label_encoder: LabelEncoder, metadata: dict):
@@ -219,7 +370,18 @@ def main():
     print(f"Class distribution:\n{df['appliance_label'].value_counts()}\n")
 
     X, y, le = prepare_data(df)
-    X_train, X_test, y_train, y_test, has_test_split = split_train_test(X, y)
+    group_column, groups = select_group_column(df)
+    if group_column:
+        print(
+            "Group validation: "
+            f"{group_column} ({len(np.unique(groups))} groups)"
+        )
+    else:
+        print("Group validation: unavailable (capture_id/session_id missing)")
+
+    X_train, X_test, y_train, y_test, has_test_split, split_metadata = (
+        split_train_test_by_group(X, y, groups, le.classes_.tolist())
+    )
     test_count = len(X_test) if has_test_split else 0
     print(f"Train: {len(X_train)} samples | Test: {test_count} samples")
 
@@ -237,7 +399,7 @@ def main():
     else:
         print(f"Test  accuracy : {test_acc:.4f}")
 
-    cv_results = cross_validate_model(model, X, y)
+    cv_results = cross_validate_model(X, y, groups)
     if cv_results["cv_mean_accuracy"] is None:
         print(f"CV mean        : skipped ({cv_results['cv_skipped_reason']})")
     else:
@@ -256,7 +418,13 @@ def main():
         "train_accuracy": train_acc,
         "test_accuracy": test_acc,
         "has_test_split": has_test_split,
-        "feature_set_version": "tapo_signature_v2",
+        "feature_set_version": FEATURE_SET_VERSION,
+        "feature_policy": (
+            "Voltage/current-derived features are excluded from v3 training to "
+            "reduce location and sensor-transfer leakage."
+        ),
+        "removed_feature_cols": REMOVED_FEATURE_COLS,
+        "normalized_shape_features": NORMALIZED_SHAPE_FEATURES,
         "raw_feature_windows_before_filter": int(raw_window_count),
         "filtered_inactive_windows": int(filtered_inactive_windows),
         "min_active_window_power_w": MIN_ACTIVE_WINDOW_POWER_W,
@@ -264,9 +432,14 @@ def main():
         "top_feature_importance": get_feature_importance(model, FEATURE_COLS),
         "xgb_params": XGB_PARAMS,
         "window_size_s": args.window,
+        "group_column": group_column,
+        "group_count": int(len(np.unique(groups))) if groups is not None else 0,
+        **split_metadata,
         "notes": (
             "This is a smart-plug appliance signature classifier. It is not yet "
-            "aggregate household NILM disaggregation."
+            "aggregate household NILM disaggregation. True NILM requires "
+            "synchronized main-line aggregate readings plus appliance-level "
+            "Tapo labels."
         ),
         **cv_results,
     }
