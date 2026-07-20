@@ -26,9 +26,12 @@ SUPPORTED_APPLIANCES = [
     "laptop_charger",
 ]
 
+FEATURE_SET_VERSION = "tapo_signature_v3"
 ON_THRESHOLD_W = 5.0
 WINDOW_SIZE_S = 30
 MIN_WINDOW_SAMPLES = 3
+ROLLING_BASELINE_WINDOW = 5
+EPSILON = 1e-6
 DATA_DIR = Path(__file__).parent / "data"
 
 TAPO_COLUMN_MAP = {
@@ -72,6 +75,10 @@ FEATURE_COLUMNS = [
     "p90_power",
     "power_delta",
     "std_power",
+    "peak_to_mean_ratio",
+    "coefficient_of_variation",
+    "duty_cycle",
+    "delta_vs_rolling_baseline",
     "steady_state_w",
     "active_mean_power",
     "active_max_power",
@@ -85,10 +92,6 @@ FEATURE_COLUMNS = [
     "max_step_down",
     "rise_time_s",
     "energy_kwh_est",
-    "mean_voltage",
-    "std_voltage",
-    "mean_current",
-    "max_current",
     "is_cyclic",
 ]
 
@@ -166,6 +169,7 @@ def load_csv(filepath: str) -> pd.DataFrame:
         power_w         - active power in watts (float)
         appliance_label - string label e.g. 'fridge'
         capture_id      - optional capture/session identifier
+        session_id      - optional capture/session identifier
     """
     df = pd.read_csv(filepath)
     if TAPO_HINT_COLUMNS.intersection(df.columns) and "capture_id" not in df.columns:
@@ -191,8 +195,8 @@ def extract_features_from_window(window: pd.DataFrame | pd.Series) -> dict:
     Extract a feature vector from a single appliance power window.
 
     The feature set intentionally mixes steady-state, transient, duty-cycle,
-    and light electrical-context signals. This helps separate appliances that
-    sit in similar wattage bands, such as fridge and fan.
+    and normalized shape signals. This helps separate appliances that sit in
+    similar wattage bands without relying on voltage/current-derived features.
     """
     if isinstance(window, pd.Series):
         window = pd.DataFrame({"power_w": window})
@@ -210,6 +214,27 @@ def extract_features_from_window(window: pd.DataFrame | pd.Series) -> dict:
     std_p = float(np.std(values))
     delta_p = max_p - min_p
     p10, p25, p75, p90 = np.percentile(values, [10, 25, 75, 90])
+    peak_to_mean_ratio = max_p / (mean_p + EPSILON)
+    coefficient_of_variation = std_p / (mean_p + EPSILON)
+    duty_cycle = (
+        float(np.mean(values >= mean_p))
+        if max_p > ON_THRESHOLD_W
+        else 0.0
+    )
+
+    power_series = pd.Series(values)
+    baseline_window = min(ROLLING_BASELINE_WINDOW, n)
+    rolling_baseline = (
+        power_series.rolling(baseline_window, min_periods=1)
+        .mean()
+        .shift(1)
+        .bfill()
+        .fillna(mean_p)
+        .to_numpy(dtype=float)
+    )
+    baseline_delta = float(np.max(values - rolling_baseline))
+    baseline_scale = max(max_p, float(np.max(np.abs(rolling_baseline))), EPSILON)
+    delta_vs_rolling_baseline = max(0.0, baseline_delta) / baseline_scale
 
     rise_idx = int(np.argmax(values))
     rise_time_s = float(rise_idx * sample_interval_s)
@@ -242,9 +267,6 @@ def extract_features_from_window(window: pd.DataFrame | pd.Series) -> dict:
         intervals = np.full(n, sample_interval_s)
     energy_kwh = float(np.sum(values * intervals) / 3_600_000.0)
 
-    voltage = _numeric_window_values(window, "voltage_v")
-    current = _numeric_window_values(window, "current_a")
-
     return {
         "mean_power": mean_p,
         "max_power": max_p,
@@ -256,6 +278,10 @@ def extract_features_from_window(window: pd.DataFrame | pd.Series) -> dict:
         "p90_power": float(p90),
         "power_delta": delta_p,
         "std_power": std_p,
+        "peak_to_mean_ratio": peak_to_mean_ratio,
+        "coefficient_of_variation": coefficient_of_variation,
+        "duty_cycle": duty_cycle,
+        "delta_vs_rolling_baseline": delta_vs_rolling_baseline,
         "steady_state_w": steady_state,
         "active_mean_power": active_mean,
         "active_max_power": active_max,
@@ -271,12 +297,25 @@ def extract_features_from_window(window: pd.DataFrame | pd.Series) -> dict:
         "duration_s": duration_s,
         "sample_interval_median_s": sample_interval_s,
         "energy_kwh_est": energy_kwh,
-        "mean_voltage": float(np.mean(voltage)) if len(voltage) else 0.0,
-        "std_voltage": float(np.std(voltage)) if len(voltage) else 0.0,
-        "mean_current": float(np.mean(current)) if len(current) else 0.0,
-        "max_current": float(np.max(current)) if len(current) else 0.0,
         "is_cyclic": is_cyclic,
     }
+
+
+def _attach_window_metadata(
+    features: dict,
+    window: pd.DataFrame,
+    label: str,
+) -> dict:
+    """Keep capture/session metadata for group-aware NILM validation."""
+    features["appliance_label"] = label
+    for column in ("capture_id", "session_id"):
+        if column not in window.columns:
+            continue
+        values = window[column].dropna()
+        if values.empty:
+            continue
+        features[column] = str(values.iloc[0])
+    return features
 
 
 def extract_all_features(df: pd.DataFrame, window_size: int = WINDOW_SIZE_S) -> pd.DataFrame:
@@ -326,8 +365,7 @@ def extract_all_features(df: pd.DataFrame, window_size: int = WINDOW_SIZE_S) -> 
                 features = extract_features_from_window(window)
                 if not features:
                     continue
-                features["appliance_label"] = label
-                records.append(features)
+                records.append(_attach_window_metadata(features, window, label))
             continue
 
         step_rows = max(1, window_size // 2)
@@ -337,8 +375,7 @@ def extract_all_features(df: pd.DataFrame, window_size: int = WINDOW_SIZE_S) -> 
             features = extract_features_from_window(window)
             if not features:
                 continue
-            features["appliance_label"] = label
-            records.append(features)
+            records.append(_attach_window_metadata(features, window, label))
 
     if not records:
         raise ValueError("No feature windows extracted. Check CSV data and window size.")
