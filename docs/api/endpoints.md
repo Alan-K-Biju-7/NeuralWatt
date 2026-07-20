@@ -98,7 +98,7 @@ Response shape:
 ```json
 {
   "model_version": "nilm_v1",
-  "feature_set_version": "tapo_signature_v2",
+  "feature_set_version": "tapo_signature_v3",
   "window_size_s": 30,
   "classes": ["electric_kettle", "fan", "fridge", "iron", "mixer_grinder", "washing_machine"],
   "windows": [
@@ -120,7 +120,10 @@ Response shape:
 ```
 
 This endpoint currently uses the smart-plug appliance signature classifier. It
-does not yet perform aggregate household disaggregation.
+accepts voltage/current readings for canonical telemetry compatibility, but the
+`tapo_signature_v3` model excludes voltage/current-derived training features to
+reduce transfer leakage. It does not yet perform aggregate household
+disaggregation.
 
 ## Anomalies And Alerts
 
