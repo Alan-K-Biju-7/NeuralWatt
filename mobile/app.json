@@ -1,0 +1,32 @@
+{
+  "expo": {
+    "name": "NeuralWatt",
+    "slug": "neuralwatt",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "neuralwatt",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "app.neuralwatt.mobile"
+    },
+    "android": {
+      "package": "app.neuralwatt.mobile",
+      "adaptiveIcon": {
+        "backgroundColor": "#07130f"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "apiUrl": "http://localhost:8000/api/v1",
+      "wsUrl": "ws://localhost:8000/ws"
+    }
+  }
+}
