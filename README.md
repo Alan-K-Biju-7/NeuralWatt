@@ -27,6 +27,7 @@ aggregate/appliance data collection.
 | JWT user authentication | Implemented |
 | Device-key IoT ingestion | Implemented |
 | React dashboard | Implemented MVP |
+| Expo mobile app | Implemented MVP |
 | WebSocket live readings | Implemented |
 | KSEB bill estimation | Implemented |
 | Z-score anomaly detection | Implemented |
@@ -69,6 +70,7 @@ aggregate/appliance data collection.
 | Backend | FastAPI, Pydantic, Motor |
 | Database | MongoDB |
 | Frontend | React, Vite, Tailwind CSS, Recharts |
+| Mobile | Expo, React Native, Expo Router, TanStack Query |
 | Auth | JWT, bcrypt/passlib |
 | Realtime | WebSocket |
 | ML | pandas, scikit-learn, XGBoost |
@@ -91,6 +93,11 @@ MongoDB + WebSocket
         v
 React dashboard
 
+FastAPI also serves the dedicated Expo mobile app:
+
+Mobile app -> secure JWT session -> shared analytics and insights APIs
+           -> household WebSocket -> live power
+
 ML pipeline:
 Tapo raw CSV -> merge -> feature extraction -> XGBoost NILM baseline -> evaluation
 Trained NILM baseline -> CLI/API prediction -> future dashboard appliance cards
@@ -108,6 +115,7 @@ More detail is available in:
 NeuralWatt/
 |-- backend/              # FastAPI API, schemas, services, tests
 |-- frontend/             # React dashboard
+|-- mobile/               # Expo React Native app for iOS and Android
 |-- simulator/            # Safe local energy-reading simulator
 |-- ml/                   # NILM feature extraction, training, evaluation
 |-- docs/                 # Architecture and API notes
@@ -165,6 +173,23 @@ Stop the demo:
 ```bash
 make demo-down
 ```
+
+## Mobile App
+
+The dedicated Expo app reuses the same NeuralWatt account and backend as the
+web dashboard. It includes secure login, live power, usage and bill analytics,
+recommendations, anomaly alerts, and device/account settings.
+
+```bash
+cd mobile
+cp .env.example .env
+npm install
+npm start
+```
+
+Set the API and WebSocket URLs in `mobile/.env` to the computer's LAN address
+when using a physical phone. See [`mobile/README.md`](mobile/README.md) for
+emulator addresses and EAS build instructions.
 
 ## API Ingestion
 
