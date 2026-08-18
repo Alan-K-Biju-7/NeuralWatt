@@ -1,11 +1,14 @@
 export type Anomaly = {
   id: string;
-  power_w: number;
-  z_score: number;
+  watts: number;
+  expected_watts: number;
+  deviation_pct: number;
   severity: "low" | "medium" | "high" | string;
   message?: string;
-  timestamp: string;
+  detected_at: string;
 };
+
+export type AnomalyResponse = { device_id: string; anomalies: Anomaly[]; total: number };
 
 export type Recommendation = {
   id?: string;
