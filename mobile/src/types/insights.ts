@@ -10,13 +10,17 @@ export type Anomaly = {
 export type Recommendation = {
   id?: string;
   title: string;
-  description: string;
-  category?: string;
-  estimated_savings?: number;
+  message: string;
+  severity: string;
+  savings_hint: string;
 };
 
 export type ForecastPoint = {
-  timestamp: string;
-  predicted_power_w?: number;
-  predicted_kwh?: number;
+  hour: string;
+  predicted_kwh: number;
+  lower_kwh: number;
+  upper_kwh: number;
 };
+
+export type RecommendationResponse = { household_id: string; window_hours: number; recommendations: Recommendation[] };
+export type ForecastResponse = { household_id: string; history_days: number; horizon_hours: number; forecast: ForecastPoint[] };
