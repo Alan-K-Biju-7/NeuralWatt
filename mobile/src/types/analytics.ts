@@ -1,15 +1,15 @@
-export type DailyUsagePoint = { date: string; energy_kwh: number; cost?: number };
-export type HourlyUsagePoint = { hour: number; energy_kwh: number; average_power_w?: number };
+export type DailyUsagePoint = { date: string; kwh: number; avg_watts: number; peak_watts: number; reading_count: number };
+export type HourlyUsagePoint = { hour: number; avg_watts: number; peak_watts: number; reading_count: number };
 
-export type DailyUsage = { household_id: string; device_id: string; days: number; data: DailyUsagePoint[] };
-export type HourlyUsage = { household_id: string; device_id: string; days: number; data: HourlyUsagePoint[] };
+export type DailyUsage = { device_id: string; unit: string; days: DailyUsagePoint[]; total_kwh: number; from_date: string; to_date: string };
+export type HourlyUsage = { device_id: string; hours: HourlyUsagePoint[]; peak_hour: number; peak_hour_avg_watts: number };
 
 export type CostEstimate = {
-  energy_kwh: number;
+  total_kwh: number;
   energy_charge: number;
   fixed_charge: number;
-  duty: number;
+  electricity_duty: number;
   meter_rent: number;
-  total_cost: number;
+  total_bill: number;
   currency: string;
 };
